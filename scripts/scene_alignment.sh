@@ -8,7 +8,7 @@
 
 
 log () {
-	echo $0 " -> " $1; 
+	echo "$0" " -> " "$1"; 
 }
 
 
@@ -42,7 +42,7 @@ do
         EPSG=$(gdalinfo $s2dir/S2MSI.tmp.tif | grep -oP "(?<=\"EPSG\",)\d{5}")
 
         log "EPSG: $EPSG Extents: $(ULLR $s2dir/S2MSI.tmp.tif | sed "s/\.[0-9]\{3\}//g")"
-        log "Generating projected Sentinel-3 patch matching the Sentinel-2 scene."
+        log "Generating projected Sentinel-3 patch matching the Sentinel-2 scene." 1>&2;
         
         # Cast S3 SRS to Sentinel-2 UTM grid.
         gdalwarp -r bilinear -tr 500 500 -s_srs EPSG:4326 \
@@ -59,34 +59,33 @@ do
         # TODO Extend to check Sentinel-3 patch has sufficient valid values.
         # TODO Change check if patch it empty to condition patch valid samples > acceptable percentage.
 
-        log "Checking patch validity.";
+        log "Checking Sentinel-3 patch validity.";
         
         VALID=$(gdalinfo -stats $s2dir/s3.patch.tmp.tif |\
          grep -oP "(?<=STATISTICS_VALID_PERCENT=)\d+" | head -n 1)
         if [ $VALID -le 30 ];
         then 
-                log "Sentinel-3 patch out of sensor geometry. Removing directory." 1>&2
+                log "Sentinel-3 patch out of sensor geometry. Removing directory."
                 rm -r $s2dir && continue;
         else
-                echo $0 " -> " OK. 1>&2
+                log "Image OK."
                 rm $s2dir/s3.patch.tmp.tif.aux.xml;
         fi
 
 
         # Here we can perform the coregistration and produce
         # a coregistered S3SLSTR_N.tif.
-		log "Starting arosics workflow for $s2dir." 1>&2;
+		log "Starting arosics workflow for $s2dir.";
 
         arosics local -rsp_alg_calc 1 -br 3 -bs 1 -fmt_out GTIFF -ws 16 16\
          -nodata "0" "-32768" -max_shift 5 -min_reliability 0\
           $s2dir/S2MSI.tmp.tif $s2dir/s3.patch.tmp.tif 2\
-          -o "$s2dir/s3_coreg.tif" 2> /dev/null && rm $s2dir/s3.patch.tmp.tif ||\
-		  log "Arosics operation failed. Aborting." 1&>2 && exit 123;
+          -o "$s2dir/s3_coreg.tif" 2> /dev/null && rm $s2dir/s3.patch.tmp.tif
 
         # If output file was not generated continue to next iteration.
-        [[ ! -f "$s2dir/s3_coreg.tif" ]] && log "Failed." && continue;
+        [[ ! -f "$s2dir/s3_coreg.tif" ]] && log "Arosics workflow failed." && continue;
         
-        log "Reducing S3 patch shape to an approximately centered 210 x 210 pixels scene."
+        log "Cropping Sentinel-3 to a 210 x 210 pixels scene." 1>&2;
 
         gdal_translate -srcwin 4 4 210 210\
         -co "COMPRESS=LZW" $s2dir/s3_coreg.tif $s2dir/S3SLSTR_$N.tif &&\
@@ -97,10 +96,10 @@ do
         
         # LAST STEP: Crop S2MSI image to rounded S3 extents.
         log "Cropping Sentinel-2 scene to 
-		the exact extents of the generated Sentinel-3 patch."
-        
-        log "From ${S2BOX[@]}"
-        log "To   ${S3BOX[@]}"
+		the exact extents of the generated Sentinel-3 patch.";
+		
+        log "From '${S2BOX[@]}'";
+        log "To   '${S3BOX[@]}'";
 
         gdal_translate -co "COMPRESS=LZW" -projwin ${S3BOX[@]}\
          $s2dir/S2MSI.tmp.tif $s2dir/S2MSI_$N.tif &&\
@@ -108,3 +107,11 @@ do
 
         ((N++));
 done
+
+# Sentinel-3 file not necessary.
+# rm $S3FILE;
+
+# Check there are subdirectories remaining (directory is empty).
+# Otherwise remove root directory of S3 acquisition.
+# if [ -z "$(ls -A $__DIR__)" ]; then rmdir $__DIR__; fi
+
