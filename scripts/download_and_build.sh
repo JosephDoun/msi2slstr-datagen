@@ -53,7 +53,7 @@ validate_option () {
         done
         if [[ ! $valid -eq 1 ]]
         then
-                echo $0 " -> " "Invalid value \"$VAL_\" for option $OPT_"
+                log "Invalid value \"$VAL_\" for option $OPT_"
                 local IFS=','; echo $0 " -> " "Allowed values:" "${ALL_[*]}";
                 exit 1;
         fi
@@ -61,6 +61,10 @@ validate_option () {
 
 # Default datadump directory.
 __DATADIR__="s2lstr-dataset";
+# Default allowed time difference of Sentinel-2 acquisitions.
+MAXTIME=300;
+# Default minimum filesize.
+MINFILESIZE=$((700*1024*1024))
 
 # Option parsing.
 while [ "$#" -gt 0 ];
@@ -72,6 +76,7 @@ do
           -t|--to) TO=$(nospace "$2"); shift 2;;
           -l|--loc) LOC=$(nospace "$2"); shift 2;;
 		  -d|--dir) __DATADIR__=$2; shift 2;;
+		  -t|--time) TIME=$2; shift 2;;
           --overwrite) OVRWRT=1; shift 1;;
           *) echo "unknown option: $1" >&2; exit 1;;
           
@@ -185,6 +190,8 @@ then
 	a longer acquisition window and acquired images for multiple RBT footprints.
 	
 	As a result, acquisition start times for matching products may differ.
+
+	THE USED API SEEMS TO BE FUNCTIONING PROPERLY ONLY FOR 2023 AND LATE 2022.
 	EOF
 
 	exit 111; 
@@ -227,19 +234,14 @@ __PATH__="$__DATADIR__/$RBT_DATE/$(date -ud $REFERENCETIME +%Y%m%dT%H%M%S)"
 if [ -d $__PATH__ ] && [ $OVRWRT -ne 1 ];
 then 
         log "Directory already exists. Exiting."; 
-        exit 1;
+        exit 11;
 elif [ ${#S2IDS[@]} -eq 0 ]
 then
-        log "No Sentinel-2 scenes met criteria. Exiting.";
-        exit 2;
+        log "No Sentinel-2 scenes matched the query. Exiting.";
+        exit 22;
 else 
         mkdir -p $__PATH__; 
 fi
-
-
-# Sentinel-2 scene criteria
-TIME=1900
-FILE_SIZE=800000000
 
 
 # Download S2 products. Collect inaccessible ids.
@@ -249,8 +251,8 @@ S2OFFLINE=(); flag=0;
 for i in "${!S2FOOTPRINTS[@]}"
 do
         if [ $RBT_DATE == $(get_date ${S2FNAMES[$i]}) ] &&\
-         [[ ${S2FILESIZE[$i]%.*} -gt $FILE_SIZE ]] &&\
-          [[ ${TIMEDIFFS[$i]} -lt $TIME ]] &&\
+         [[ ${S2FILESIZE[$i]%.*} -ge $MINFILESIZE ]] &&\
+          [[ ${TIMEDIFFS[$i]} -le $MAXTIME ]] &&\
            [ ! -d $__PATH__/${S2FNAMES[$i]} ]
         then
                 STATUS=$(download "${S2IDS[$i]}" "$__PATH__/${S2FNAMES[$i]}.zip")
@@ -292,14 +294,19 @@ done
 if [[ $flag -eq 0 ]]
 then	
         log "No Sentinel-2 scenes met criteria.";
-		
+			
 		cat <<-EOF
-		Scenes were taken more than 30 minutes apart 
-		or were less than 800mb in size.
-		EOF
+		
+		Scenes were taken more than $(($MAXTIME/60)) minutes apart 
+		or were less than $(($MINFILESIZE/1024/1024))mb in size.
 
+		Sentinel-2 acquisition differences in query results: ${TIMEDIFFS[@]}
+		Sentinel-2 filesizes in query results: ${S2FILESIZE[@]}
+		
+		EOF
+		
         rmdir -p $__PATH__ 2> /dev/null
-        exit 1;
+        exit 33;
 fi
 
 # Download S3 products.
@@ -388,9 +395,8 @@ done
 
 log "Finished $FROM."
 
-log "Awaiting background image builds..."
+log "Awaiting image building background processes..."
+
 wait $PROC3 && log "Success." || (log "Failure." && exit 12);
 wait
-
-log "OK."
 
