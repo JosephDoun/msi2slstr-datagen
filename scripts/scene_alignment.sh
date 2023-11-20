@@ -8,7 +8,7 @@
 
 
 log () {
-	echo "$0" " -> " "$1"; 
+	echo "$0" " -> " "$@"; 
 }
 
 
@@ -95,8 +95,7 @@ do
         read -a S3BOX < <(ULLR $s2dir/S3SLSTR_$N.tif | sed "s/\.[0-9]\+//g")
         
         # LAST STEP: Crop S2MSI image to rounded S3 extents.
-        log "Cropping Sentinel-2 scene to 
-		the exact extents of the generated Sentinel-3 patch.";
+        log "Cropping Sentinel-2 scene to the exact extents of the generated Sentinel-3 patch.";
 		
         log "From '${S2BOX[@]}'";
         log "To   '${S3BOX[@]}'";
