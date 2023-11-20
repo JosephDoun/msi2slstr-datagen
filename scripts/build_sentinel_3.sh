@@ -10,6 +10,10 @@
 # If parameters not provided exit.
 if [ $# -eq 0 ]; then echo Use -d/--dir to specify data directory.; exit 1; fi
 
+log () {
+	echo $0 " -> " "$@"
+}
+
 # Parse parameters.
 # __DIR__ variable holds the root directory containing
 # the RBT and LST products of same date.
@@ -32,7 +36,7 @@ LST=$(echo $__DIR__/S3*SL_2_LST*)
 # Current exit code for this case: 11.
 if [ ! -d $RBT ] && [ ! -d $LST ];
 then
-        echo "ERROR: Sentinel-3 directories not found. Exiting."; 
+        log "ERROR: Sentinel-3 directories not found. Exiting."; 
         exit 11; 
 fi;
 
@@ -91,9 +95,7 @@ EOF
 for __file__ in $__TMP__/{geod*,LST,S*radiance,S*BT,F*BT}_[iaf]n.nc
 do
         # Log file currently handled.
-        echo
-        echo $0 " -> " $__file__;
-        echo
+        log $__file__;
 
         if [ -f $__file__ ]
         then
@@ -111,10 +113,10 @@ do
                         GRID=${BASE##*_}
                         GRID=${GRID%.*}
                         
-                        echo $NAME $GRID
+                        log $NAME $GRID
                         buildvrt NETCDF:$__file__:$NAME $NAME
                         
-                        echo $__TMP__/$NAME.vrt
+                        log $__TMP__/$NAME.vrt
 
                         # Inject geolocation array info.
                         sed -i "2 i $(geolocation $GRID)" $__TMP__/$NAME.vrt
@@ -134,7 +136,7 @@ buildvrt "NETCDF:$__TMP__/geodetic_tx.nc:longitude_tx" lon_tx
 buildvrt "NETCDF:$__TMP__/geodetic_tx.nc:latitude_tx" lat_tx
 
 # Build zenith angles tifs.
-for zenith in {solar_zenith_tn,sat_zenith_tn}
+for zenith in {solar_zenith_tn,solar_azimuth_tn,sat_zenith_tn,sat_azimuth_tn}
 do
         buildvrt "NETCDF:$__TMP__/geometry_tn.nc:$zenith" $zenith
         sed -i "2 i $(geolocation tx)" $__TMP__/$zenith.vrt
@@ -144,7 +146,7 @@ done
 # Build merger VRT for complete S3 end-product.
 gdalbuildvrt -resolution highest \
 -separate $__TMP__/merged.vrt \
-$__TMP__/{S1,S2,S3,S4,S5,S6,S7,S8,S9,F1,F2,LST,solar_zenith,sat_zenith}*.tif
+$__TMP__/{S1,S2,S3,S4,S5,S6,S7,S8,S9,F1,F2,LST,solar_zenith,solar_azimuth,sat_zenith,sat_azimuth}*.tif
 
 # Inject metadata and build end-product.
 # Clean leftover directories.

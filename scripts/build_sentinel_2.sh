@@ -2,6 +2,10 @@
 
 if [ $# -eq 0 ]; then echo Provide a directory using the -d/--dir option;  exit 1; fi;
 
+log () {
+	echo "$0" " -> " "$@";
+}
+
 while [ $# -gt 0 ]
 do
         case $1 in
@@ -24,11 +28,11 @@ ID=$(basename $s2_dir | grep -oP ".*(?=.SAFE)");
 s2_dir=$__DIR__/$s2_dir
 
 read -d '\n' -a ZENITHS < <(cat $s2_dir/GRANULE/*/MTD_TL.xml | grep -oP "(?<=<ZENITH_ANGLE unit=\"deg\">)[0-9\.]*(?=</ZENITH_ANGLE>)");
+read -d '\n' -a AZIMUTHS < <(cat $s2_dir/GRANULE/*/MTD_TL.xml | grep -oP "(?<=<AZIMUTH_ANGLE unit=\"deg\">)[0-9\.]*(?=</AZIMUTH_ANGLE>)");
 
-echo
-echo Tile ID: $ID;
+log "Tile ID: $ID";
 
-mkdir -p $__DIR__/$TILE
+mkdir -p $__DIR__/$TILE;
 
 # MAKE BANDS FLOAT32 IF ZENITH BANDS TO BE INTEGRATED.
 # for __jp2__ in $s2_dir/GRANULE/*/IMG_DATA/*B[0-9][0-9A].jp2
@@ -38,7 +42,7 @@ mkdir -p $__DIR__/$TILE
 
 mv $s2_dir/GRANULE/*/IMG_DATA/*B[0-9][0-9A]*.jp2 $__DIR__/$TILE;
 
-echo "Building VRT file for merged Sentinel-2 scene."
+log "Building VRT file for merged Sentinel-2 scene."
 
 # TODO ZENITH BANDS APPROACH IS COMMENTED OUT FOR NOW. STICKING TO THE METADATA APPROACH.
 
@@ -54,24 +58,37 @@ gdalbuildvrt -resolution highest\
  -separate $__DIR__/$TILE/merged.vrt\
   $__DIR__/$TILE/*{B01,B02,B03,B04,B05,B06,B07,B08,B8A,B09,B10,B11,B12}.jp2 
 
-echo
-echo "Building multiband TIF file for Sentinel-2 scene."
+log "Building multiband TIF file for Sentinel-2 scene."
 
 gdal_translate -co "COMPRESS=LZW" -mo "S2_PRODUCT=$ID" \
         -mo "ZENITH_SOLAR=${ZENITHS[0]}"\
+		-mo "AZIMUTH_SOLAR=${AZIMUTHS[0]}"\
         -mo "ZENITH_B01=${ZENITHS[1]}"\
+		-mo "AZIMUTH_B01=${AZIMUTHS[1]}"\
         -mo "ZENITH_B02=${ZENITHS[2]}"\
+		-mo "AZIMUTH_B02=${AZIMUTHS[2]}"\
         -mo "ZENITH_B03=${ZENITHS[3]}"\
+		-mo "AZIMUTH_B03=${AZIMUTHS[3]}"\
         -mo "ZENITH_B04=${ZENITHS[4]}"\
+		-mo "AZIMUTH_B04=${AZIMUTHS[4]}"\
         -mo "ZENITH_B05=${ZENITHS[5]}"\
+		-mo "AZIMUTH_B05=${AZIMUTHS[5]}"\
         -mo "ZENITH_B06=${ZENITHS[6]}"\
+		-mo "AZIMUTH_B06=${AZIMUTHS[6]}"\
         -mo "ZENITH_B07=${ZENITHS[7]}"\
+		-mo "AZIMUTH_B07=${AZIMUTHS[7]}"\
         -mo "ZENITH_B08=${ZENITHS[8]}"\
+		-mo "AZIMUTH_B08=${AZIMUTHS[8]}"\
         -mo "ZENITH_B8A=${ZENITHS[9]}"\
+		-mo "AZIMUTH_B8A=${AZIMUTHS[9]}"\
         -mo "ZENITH_B09=${ZENITHS[10]}"\
+		-mo "AZIMUTH_B09=${AZIMUTHS[10]}"\
         -mo "ZENITH_B10=${ZENITHS[11]}"\
+		-mo "AZIMUTH_B10=${AZIMUTHS[11]}"\
         -mo "ZENITH_B11=${ZENITHS[12]}"\
+		-mo "AZIMUTH_B11=${AZIMUTHS[12]}"\
         -mo "ZENITH_B12=${ZENITHS[13]}"\
+		-mo "AZIMUTH_B12=${AZIMUTHS[13]}"\
         $__DIR__/$TILE/merged.vrt $__DIR__/$TILE/S2MSI.tmp.tif &&\
         rm -r $__DIR__/$TILE/*.{vrt,jp2} $s2_dir;
 

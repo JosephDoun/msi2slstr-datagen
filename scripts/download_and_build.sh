@@ -71,13 +71,14 @@ while [ "$#" -gt 0 ];
 do
   case "$1" in
           -d|--date)
-          FROM=$(date -d "$2" +%F) TO=$(date -d "$FROM + 1 day" +%F);
+          FROM=$(date -d "$2" +%F);
+		  TO=$(date -d "$FROM + 1 day" +%F);
           shift 2;;
-          -t|--to) TO=$(nospace "$2"); shift 2;;
           -l|--loc) LOC=$(nospace "$2"); shift 2;;
-		  -d|--dir) __DATADIR__=$2; shift 2;;
+		  -o|--out) __DATADIR__=$2; shift 2;;
 		  -t|--time) TIME=$2; shift 2;;
           --overwrite) OVRWRT=1; shift 1;;
+          --to-date) TO=$2; shift 2;;
           *) echo "unknown option: $1" >&2; exit 1;;
           
           # *) handle_argument "$1"; shift 1;;  
@@ -224,8 +225,9 @@ unset IFS;
 
 # Extract relative orbit for directory tree convention.
 # Technically speaking DATE + RELORBIT + POINT should be unique.
-RELORBIT=$(echo $RBT_FILE | grep -oP "\d{4}_\d{3}_\d{3}_\d{4}" |\
- grep -oP "\d{3}_\d{4}" | grep -oP "\d{3}(?=_)");
+# NOT USED. RBT_DATE IS USED INSTEAD.
+# RELORBIT=$(echo $RBT_FILE | grep -oP "\d{4}_\d{3}_\d{3}_\d{4}" |\
+#  grep -oP "\d{3}_\d{4}" | grep -oP "\d{3}(?=_)");
 
 # Define directory path.
 __PATH__="$__DATADIR__/$RBT_DATE/$(date -ud $REFERENCETIME +%Y%m%dT%H%M%S)"
@@ -246,6 +248,7 @@ fi
 
 # Download S2 products. Collect inaccessible ids.
 log "Downloading Sentinel-2 images for $FROM";
+
 
 S2OFFLINE=(); flag=0;
 for i in "${!S2FOOTPRINTS[@]}"

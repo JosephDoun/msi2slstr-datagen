@@ -7,7 +7,7 @@ arosics --version > /dev/null || echo "Curl does not appear to be installed. Ple
 
 
 log () {
-	echo $0 " -> " $1;
+	echo $0 " -> " "$@";
 }
 
 
@@ -41,6 +41,7 @@ __DIR__="s2lstr-dataset";
 # Default maximum acquisition time difference for Sentinel-2 scenes (5 minutes).
 __TIME__=300;
 
+
 # Parameter parsing.
 case $1 in
 		-h|--help) echo "$HELP"; exit 0;;
@@ -60,15 +61,15 @@ do
         
 		if [[ ! $? ]]; then log "Invalid date. Skipping."; continue; fi;
 
-        log "Starting download for $DATE."
+        log "Starting download for $DATE.";
         
-        scripts/download_and_build.sh -d "$DATE" -l "$__LOC__" -t "$__TIME__" -d "$__DIR__"
+        scripts/download_and_build.sh -d "$DATE" -l "$__LOC__" -t "$__TIME__" -o "$__DIR__";
 		
 		DOWNLOAD_ERROR=$?
 		if [[ $DOWNLOAD_ERROR -eq 99 ]] || [[ $DOWNLOAD_ERROR -eq 100 ]]; then exit $DOWNLOAD_ERROR; fi;
  		if [[ $DOWNLOAD_ERROR -eq 111 ]]; then log "ERROR DURING DOWNLOAD -- ABORTING"; exit $DOWNLOAD_ERROR; fi;
 
-        log "Download process finished."
+        log "Download process finished.";
         
         for dir in $__DIR__/$(date --date $DATE +%Y%m%d)/*;
         do
@@ -80,6 +81,7 @@ done
 log "Waiting for background scene alignment workflows..."
 
 wait $PROC && log "Process finished for dates $@." || log "Failed with code $?" && exit 1;
+wait
 
-echo
+log "Finished.";
 
