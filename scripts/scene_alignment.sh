@@ -47,7 +47,7 @@ do
         # Cast S3 SRS to Sentinel-2 UTM grid.
         gdalwarp -r bilinear -tr 500 500 -s_srs EPSG:4326 \
         -t_srs EPSG:$EPSG $S3FILE $s2dir/s3.tmp.tif -co "COMPRESS=LZW" \
-        -overwrite
+        -overwrite;
 
 
         # This performs a cropping action to projwin box.
@@ -63,7 +63,7 @@ do
         
         VALID=$(gdalinfo -stats $s2dir/s3.patch.tmp.tif |\
          grep -oP "(?<=STATISTICS_VALID_PERCENT=)\d+" | head -n 1)
-        if [ $VALID -le 30 ];
+        if [ $VALID -lt 50 ];
         then 
                 log "Sentinel-3 patch out of sensor geometry. Removing directory."
                 rm -r $s2dir && continue;
