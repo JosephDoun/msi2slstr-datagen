@@ -63,7 +63,7 @@ do
 
         log "Starting download for $DATE.";
         
-        scripts/download_and_build.sh -d "$DATE" -l "$__LOC__" -t "$__TIME__" -o "$__DIR__";
+        scripts/download.sh -d "$DATE" -l "$__LOC__" -t "$__TIME__" -o "$__DIR__";
 		
 		DOWNLOAD_ERROR=$?
 		if [[ $DOWNLOAD_ERROR -eq 99 ]] || [[ $DOWNLOAD_ERROR -eq 100 ]]; then exit $DOWNLOAD_ERROR; fi;
@@ -73,8 +73,8 @@ do
         
         for dir in $__DIR__/$(date --date $DATE +%Y%m%d)/*;
         do
-                { scripts/scene_alignment.sh -d $dir; } &
-                PROC=$!
+                scripts/scene_alignment.sh -d $dir &;
+                PROC=$!;
         done
 done
 

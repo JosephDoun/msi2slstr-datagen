@@ -300,11 +300,11 @@ then
 			
 		cat <<-EOF
 		
-		Scenes were taken more than $(($MAXTIME/60)) minutes apart 
-		or were less than $(($MINFILESIZE/1024/1024))mb in size.
+		All Sentinel-2 images were acquired more than $(($MAXTIME/60)) 
+		minutes apart or were less than $(($MINFILESIZE/1024/1024))mb in size.
 
-		Sentinel-2 acquisition differences in query results: ${TIMEDIFFS[@]}
-		Sentinel-2 filesizes in query results: ${S2FILESIZE[@]}
+		Sentinel-2 acquisition time differences (seconds): ${TIMEDIFFS[@]}
+		Sentinel-2 filesizes (Bytes): ${S2FILESIZE[@]}
 		
 		EOF
 		
@@ -332,13 +332,13 @@ do
 
                 { 
                 unzip -o "$__PATH__/$RBT_FILE.zip"\
-                        -d "$__PATH__" 1> /dev/null &&\
+                        -d "$__PATH__" &&\
                         rm "$__PATH__/$RBT_FILE.zip";
                 } &
                 PROC1=$!
                 {
                 unzip -o "$__PATH__/$LST_FILE.zip"\
-                        -d "$__PATH__" 1> /dev/null &&\
+                        -d "$__PATH__" &&\
                         rm "$__PATH__/$LST_FILE.zip";
                 } &
                 PROC2=$!
@@ -347,7 +347,7 @@ do
 
                 if [[ $? -eq 0 ]]
                 then
-                        scripts/build_sentinel_3.sh -d $__PATH__ 1> /dev/null &
+                        scripts/build_sentinel_3.sh -d $__PATH__ &
                         PROC3=$!
                 fi
 
