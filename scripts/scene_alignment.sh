@@ -52,7 +52,7 @@ do
 
         # This performs a cropping action to projwin box.
         gdal_translate -projwin $(ULLR $s2dir/S2MSI.tmp.tif) \
-        -projwin_srs EPSG:$EPSG $s2dir/s3.tmp.tif  $s2dir/s3.patch.tmp.tif \
+        -projwin_srs EPSG:$EPSG $s2dir/s3.tmp.tif $s2dir/s3.patch.tmp.tif \
         -co "COMPRESS=LZW" &&\
         rm $s2dir/s3.tmp.tif
         
@@ -77,7 +77,7 @@ do
         # a coregistered S3SLSTR_N.tif.
 		log "Starting arosics workflow for $s2dir.";
 
-        arosics local -rsp_alg_calc 1 -br 3 -bs 1 -fmt_out GTIFF -ws 16 16\
+        arosics local -rsp_alg_calc 1 -br 9 -bs 3 -fmt_out GTIFF -ws 32 32\
          -nodata "0" "-32768" -max_shift 5 -min_reliability 0\
           $s2dir/S2MSI.tmp.tif $s2dir/s3.patch.tmp.tif 2\
           -o "$s2dir/s3_coreg.tif" 2> /dev/null && rm $s2dir/s3.patch.tmp.tif
@@ -100,7 +100,7 @@ do
         log "From '${S2BOX[@]}'";
         log "To   '${S3BOX[@]}'";
 
-        gdal_translate -co "COMPRESS=LZW" -projwin ${S3BOX[@]}\
+        gdal_translate -co "COMPRESS=LZW" -co "TILED=YES" -projwin ${S3BOX[@]}\
          $s2dir/S2MSI.tmp.tif $s2dir/S2MSI_$N.tif &&\
          rm $s2dir/S2MSI.tmp.tif;
 

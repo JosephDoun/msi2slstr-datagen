@@ -17,20 +17,20 @@ IFS='' read -r -d '' HELP <<EOF
 $SCRIPT script usage help -- intended for bash shell
 	
 $SCRIPT:
-DATASPACE_USERNAME=<Account email> DATASPACE_PASSWORD=<Account password> ./$SCRIPT [-l lon lat] [-o dir] date ...
+$ DATASPACE_USERNAME=<Account email> DATASPACE_PASSWORD=<Account password> ./$SCRIPT [-l lon lat] [-o dir] date ...
   
   Set the environment variables DATASPACE_USERNAME, DATASPACE_PASSWORD to 
   provide credentials to the catalogue.dataspace.copernicus.eu service.
 
   Options:
-    -l, --location lon lat  The longitude and latitude of the intersection to 
-                            use for querying Sentinel-3 images.
-                            Defaults to 10 50.
-	-t, --time     seconds  The maximum seconds of acquisition difference that
-							are allowed between Sentinel-3 and Sentinel-2 scenes.
-							Defaults to 300 (5 minutes).
-    -o, --output   dir      The output directory in which to build the dataset.
-                            Defaults to "./s2lstr-dataset".
+	-l, --location lon lat	The longitude and latitude of the intersection to
+				use for querying Sentinel-3 images.
+				Defaults to 10 50 (Central Europe).
+	-t, --time     seconds	The maximum seconds of acquisition difference that
+				are allowed between Sentinel-3 and Sentinel-2 scenes.
+				Defaults to 300 (5 minutes).
+	-o, --output   dir      The output directory in which to build the dataset.
+				Defaults to "./s2lstr-dataset".
 EOF
 
 
@@ -73,7 +73,7 @@ do
         
         for dir in $__DIR__/$(date --date $DATE +%Y%m%d)/*;
         do
-                scripts/scene_alignment.sh -d $dir &;
+                scripts/scene_alignment.sh -d $dir &
                 PROC=$!;
         done
 done
