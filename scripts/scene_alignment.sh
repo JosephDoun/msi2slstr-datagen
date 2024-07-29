@@ -77,13 +77,13 @@ do
         # a coregistered S3SLSTR_N.tif.
 		log "Starting arosics workflow for $s2dir.";
 
-        arosics local -rsp_alg_calc 1 -br 9 -bs 3 -fmt_out GTIFF -ws 32 32\
+        arosics local -rsp_alg_calc 1 -rsp_alg_deshift 1 -br 9 -bs 3 -fmt_out GTIFF -ws 32 32\
          -nodata "0" "-32768" -max_shift 5 -min_reliability 0\
           $s2dir/S2MSI.tmp.tif $s2dir/s3.patch.tmp.tif 2\
           -o "$s2dir/s3_coreg.tif" 2> /dev/null && rm $s2dir/s3.patch.tmp.tif
 
         # If output file was not generated continue to next iteration.
-        [[ ! -f "$s2dir/s3_coreg.tif" ]] && log "Arosics workflow failed." && continue;
+        [[ ! -f "$s2dir/s3_coreg.tif" ]] && log "Arosics workflow failed. Skipping." && continue;
         
         log "Cropping Sentinel-3 to a 210 x 210 pixels scene." 1>&2;
 
