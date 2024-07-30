@@ -97,8 +97,17 @@ if [[ -z $ACCESS_TOKEN ]]; then source scripts/access_token.sh; fi;
 # Wrap GEOM value to request body expected format
 LOC="geography'SRID=4326;POINT($LOC)'";
 
+##############
+# echo $TO $FROM $ACCESS_TOKEN;
+#############
+
 # Query request function that returns server response.
 query () {
+
+	##############
+	# echo $@;
+	#############
+	
         Q="https://catalogue.dataspace.copernicus.eu/odata/v1/Products?\$filter="
         Q+="ContentDate/Start+gt+$2T00:00:00.000Z"
         Q+="+and+ContentDate/Start+lt+$3T00:00:00.000Z"
@@ -110,15 +119,18 @@ query () {
         then
                 Q+="+and+Attributes/OData.CSC.DoubleAttribute/any("
                 Q+="att:att/Name+eq+'cloudCover'"
-                Q+="+and+att/OData.CSC.DoubleAttribute/Value+lt+'15.00')"
+				# BUGFIX DoubleAttribute were changed in latest API
+				# and are now expecting float format. E.g. Previously
+				# expected '15.00' becomes simply 15.00.
+                Q+="+and+att/OData.CSC.DoubleAttribute/Value+lt+15.00)"
         fi
 
         Q+="+and+Odata.CSC.Intersects(area=$4)";
         Q+="&\$orderby=ContentDate/Start+asc";
         Q+="&\$top=30";
         # Q+="&\$expand=Attributes";
-
-        curl --fail "$Q";
+        
+		curl -D query_header_dump.txt --fail "$Q";
         }
 
 # Function that downloads product from link.
@@ -126,7 +138,7 @@ download () {
 
 source scripts/access_token.sh;
 
-curl -D - -H "Authorization: Bearer $ACCESS_TOKEN"\
+curl -D download_header_dump.txt -H "Authorization: Bearer $ACCESS_TOKEN"\
  "https://catalogue.dataspace.copernicus.eu/odata/v1/Products($1)/\$value"\
  --location-trusted -o "$2" | head -n 1 | grep -oP "\d{3}";
 
@@ -143,8 +155,16 @@ echo $1 |  grep -oP "(?<=\"Start\":\")\d{4}-\d{2}-\d{2}T\d\d:\d\d:\d\d\.\d\d\dZ"
 log "Querying for RBT products".
 RBTRESPONSE=$(query "SL_1_RBT___" $FROM $TO $LOC)
 
+##################
+# echo $RBTRESPONSE;
+##################
+
 log "Querying for LST products."
 LSTRESPONSE=$(query "SL_2_LST___" $FROM $TO $LOC)
+
+#################
+# echo $LSTRESPONSE;
+#################
 
 __GEOM__REGEX__="(?<=\"Footprint\":\")geography[^\"]*'(?=\",)"
 __ID____REGEX__="(?<=\"Id\":\")[a-zA-Z0-9_\-]*(?=\",)"
@@ -166,6 +186,10 @@ LST_DATE=$(get_date $LST_FILE)
 
 # Get query response for S2MSI1C products.
 L1CRESPONSE=$(query "S2MSI1C" "$FROM" "$TO" "$RBT_QUERY_FOOTPRINT")
+
+###########################
+# echo $L1CRESPONSE;
+##########################
 
 # Extract dates of products for comparison.
 RBTSTART=${RBT_FILE:16:15}

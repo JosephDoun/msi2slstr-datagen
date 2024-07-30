@@ -26,8 +26,8 @@ $ DATASPACE_USERNAME=<Account email> DATASPACE_PASSWORD=<Account password> ./$SC
 	-l, --location lon lat	The longitude and latitude of the intersection to
 				use for querying Sentinel-3 images.
 				Defaults to 10 50 (Central Europe).
-	-t, --time     seconds	The maximum seconds of acquisition difference that
-				are allowed between Sentinel-3 and Sentinel-2 scenes.
+	-t, --time     seconds	The maximum number of seconds of acquisition difference
+				that is allowed between Sentinel-3 and Sentinel-2 scenes.
 				Defaults to 300 (5 minutes).
 	-o, --output   dir      The output directory in which to build the dataset.
 				Defaults to "./s2lstr-dataset".
@@ -48,7 +48,7 @@ case $1 in
         -l|--location) __LOC__=$2; shift 2;;
 		-t|--time) __TIME__=$2; shift 2;;
 		-o|--output) __DIR__=$2; shift 2;;
-		-*) echo Unknown argument "$1". Run ./make_dataset.sh -h/--help for additional information.;
+		-*) echo Unknown argument "$1". Run $0 -h/--help for additional information.;
         exit 1;;
 esac
 
@@ -56,7 +56,7 @@ esac
 # Iterate over provided dates.
 for DATE in $@
 do
-        # Cast date to correct format.
+		# Cast date to correct format.
         DATE=$(date --date $DATE +%Y-%m-%d)
         
 		if [[ ! $? ]]; then log "Invalid date. Skipping."; continue; fi;
