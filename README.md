@@ -1,7 +1,27 @@
 # s2lstr-datagen:
 ## data generator scripted workflow for the generation of the s2lstr dataset
 
+```shell
+s2lstr-datagen.sh script usage help -- intended for bash shell
+	
+s2lstr-datagen.sh:
+$ DATASPACE_USERNAME=<Account email> DATASPACE_PASSWORD=<Account password> ./s2lstr-datagen.sh [-l lon lat] [-o dir] date ...
+  
+  Set the environment variables DATASPACE_USERNAME, DATASPACE_PASSWORD to 
+  provide credentials to the catalogue.dataspace.copernicus.eu service.
+
+  Options:
+	-l, --location lon lat	The longitude and latitude of the intersection to
+				use for querying Sentinel-3 images.
+				Defaults to 10 50 (Central Europe).
+	-t, --time     seconds	The maximum number of seconds of acquisition difference
+				that is allowed between Sentinel-3 and Sentinel-2 scenes.
+				Defaults to 300 (5 minutes).
+	-o, --output   dir      The output directory in which to build the dataset.
+				Defaults to "./s2lstr-dataset".
+```
+
 Example usage:
-`./s2lstr-datagen 2023-01-{1..31}`
+`... ./s2lstr-datagen 2023-01-{1..31}`
 
 The above example will look for appropriate pairs for every day of January 2023 and if found, will proceed with downloading and preparing them.
