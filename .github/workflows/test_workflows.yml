@@ -8,8 +8,6 @@ on:
       - 'main'
   schedule:
     - cron: '* * * * 0'
-    branches:
-      - 'main'
 
 jobs:
   test_query_endpoint:
@@ -22,4 +20,5 @@ jobs:
       - name: "test_query script execution."
         run: ./scripts/test_query.sh
       - name: "Success."
+        run: echo Job Successful // Request passes.
 
