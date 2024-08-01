@@ -108,29 +108,30 @@ query () {
 	# echo $@;
 	#############
 	
-        Q="https://catalogue.dataspace.copernicus.eu/odata/v1/Products?\$filter="
-        Q+="ContentDate/Start+gt+$2T00:00:00.000Z"
-        Q+="+and+ContentDate/Start+lt+$3T00:00:00.000Z"
-        Q+="+and+Attributes/OData.CSC.StringAttribute/any("
-        Q+="att:att/Name+eq+'productType'"
-        Q+="+and+att/OData.CSC.StringAttribute/Value+eq+'$1')"
+        # Q="https://catalogue.dataspace.copernicus.eu/odata/v1/Products?\$filter="
+        # Q+="ContentDate/Start+gt+$2T00:00:00.000Z"
+        # Q+="+and+ContentDate/Start+lt+$3T00:00:00.000Z"
+        # Q+="+and+Attributes/OData.CSC.StringAttribute/any("
+        # Q+="att:att/Name+eq+'productType'"
+        # Q+="+and+att/OData.CSC.StringAttribute/Value+eq+'$1')"
         
-        if [[ $1 == "S2MSI1C" ]]
-        then
-                Q+="+and+Attributes/OData.CSC.DoubleAttribute/any("
-                Q+="att:att/Name+eq+'cloudCover'"
+        # if [[ $1 == "S2MSI1C" ]]
+        # then
+        #         Q+="+and+Attributes/OData.CSC.DoubleAttribute/any("
+        #         Q+="att:att/Name+eq+'cloudCover'"
 				# BUGFIX DoubleAttribute were changed in latest API
 				# and are now expecting float format. E.g. Previously
 				# expected '15.00' becomes simply 15.00.
-                Q+="+and+att/OData.CSC.DoubleAttribute/Value+lt+15.00)"
-        fi
+        #         Q+="+and+att/OData.CSC.DoubleAttribute/Value+lt+15.00)"
+        # fi
 
-        Q+="+and+Odata.CSC.Intersects(area=$4)";
-        Q+="&\$orderby=ContentDate/Start+asc";
-        Q+="&\$top=30";
+        # Q+="+and+Odata.CSC.Intersects(area=$4)";
+        # Q+="&\$orderby=ContentDate/Start+asc";
+        # Q+="&\$top=30";
         # Q+="&\$expand=Attributes";
         
-		curl -D query_header_dump.txt --fail "$Q";
+		curl -D query_header_dump.txt --fail\
+			$(./scripts/query_format.sh "$1" "$2" "$3" "$4");
         }
 
 # Function that downloads product from link.
@@ -138,7 +139,7 @@ download () {
 
 source scripts/access_token.sh;
 
-curl -D download_header_dump.txt -H "Authorization: Bearer $ACCESS_TOKEN"\
+curl -D - -H "Authorization: Bearer $ACCESS_TOKEN"\
  "https://catalogue.dataspace.copernicus.eu/odata/v1/Products($1)/\$value"\
  --location-trusted -o "$2" | head -n 1 | grep -oP "\d{3}";
 

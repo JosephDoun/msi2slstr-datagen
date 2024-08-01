@@ -1,5 +1,5 @@
-# s2lstr-datagen:
-## data generator scripted workflow for the generation of the s2lstr dataset
+# s2lstr-datagen
+## Scripted workflow for the generation of the s2lstr dataset.
 
 This script uses the OData API of the [Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu).
 For using it, you will need to create a free account and provide the credentials as environmental variables
