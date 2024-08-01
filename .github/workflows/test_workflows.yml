@@ -1,6 +1,6 @@
 
 name: query api verification workflow
-run-name: @${{ github.actor }} on ${{ github.event_name }}
+run-name: ${{ github.actor }} on ${{ github.event_name }}
 
 on:
   push:
