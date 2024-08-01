@@ -23,6 +23,6 @@ if [[ $STATUS -ne 200 ]]; then exit 2; fi;
 # Test LST product request;
 Q=$(./scripts/query_format.sh "SL_2_LST____" $FROM $TO $LOCATION);
 STATUS=$(run_query_get_status_code $Q)
-if [[ $STATUS -ne 200 ]]; then exit 3; fi;
+if [[ $STATUS -ne 205 ]]; then exit 3; fi;
 
 
