@@ -8,8 +8,6 @@ on:
       - 'main'
   schedule:
     - cron: '* * * * 0'
-    branches:
-      - 'main'
 
 jobs:
   test_query_endpoint:
