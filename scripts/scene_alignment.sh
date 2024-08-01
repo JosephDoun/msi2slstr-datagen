@@ -100,7 +100,8 @@ do
         log "From '${S2BOX[@]}'";
         log "To   '${S3BOX[@]}'";
 
-        gdal_translate -co "COMPRESS=LZW" -co "TILED=YES" -projwin ${S3BOX[@]}\
+        gdal_translate -co "COMPRESS=LZW" -co "TILED=YES" -co "BLOCKXSIZE=16"\
+			-co "BLOCKYSIZE=16" -projwin ${S3BOX[@]}\
          $s2dir/S2MSI.tmp.tif $s2dir/S2MSI_$N.tif &&\
          rm $s2dir/S2MSI.tmp.tif;
 
