@@ -20,4 +20,5 @@ jobs:
       - name: "test_query script execution."
         run: ./scripts/test_query.sh
       - name: "Success."
+        run: echo Job Successful // Request passes.
 
