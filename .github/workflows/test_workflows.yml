@@ -1,13 +1,13 @@
 
 name: query api verification workflow
-run-name: ${{ github.actor }} push or merge;
+run-name: @${{ github.actor }} on @${{ github.event_name }};
 
 on:
   push:
     branches:
       - 'main'
   schedule:
-    - cron: '* * * * 0'
+    - cron: '* 12 * * 5'
 
 jobs:
   test_query_endpoint:
