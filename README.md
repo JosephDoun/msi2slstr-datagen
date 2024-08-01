@@ -1,4 +1,6 @@
-# s2lstr-datagen
+[![query api verification workflow](https://github.com/JosephDoun/Sen2LSTR-Dataset-Generator/actions/workflows/test_workflows.yml/badge.svg?branch=main&event=schedule)](https://github.com/JosephDoun/Sen2LSTR-Dataset-Generator/actions/workflows/test_workflows.yml) [![query api verification workflow](https://github.com/JosephDoun/Sen2LSTR-Dataset-Generator/actions/workflows/test_workflows.yml/badge.svg?branch=main&event=push)](https://github.com/JosephDoun/Sen2LSTR-Dataset-Generator/actions/workflows/test_workflows.yml)
+
+# s2lstr-datagen 
 ## Scripted workflow for the generation of the s2lstr dataset.
 
 This script uses the OData API of the [Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu).
