@@ -37,7 +37,7 @@ EOF
 # Default loc at approximate center of Europe.
 __LOC__="10 50";
 # Default datadump directory.
-__DIR__="s2lstr-dataset";
+__DIR__="data";
 # Default maximum acquisition time difference for Sentinel-2 scenes (5 minutes).
 __TIME__=300;
 
