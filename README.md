@@ -39,3 +39,5 @@ The above example will look for appropriate pairs for every day of January 2023 
 - gdal
 - arosics
 
+#### How to cite:
+*Doundoulakis, I. (2024) “msi2slstr-datagen: A collection of bash scripts for the generation of Sentinel-2 L1C and Sentinel-3 SLSTR pairs of products.”. Zenodo. doi: 10.5281/zenodo.13760441.*
