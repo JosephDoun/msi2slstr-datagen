@@ -5,11 +5,7 @@ gdal-config --version > /dev/null || echo "GDAL does not appear to be installed.
 curl --version > /dev/null || echo "Curl does not appear to be installed. Please install it."
 arosics --version > /dev/null || echo "Curl does not appear to be installed. Please install it."
 
-
-log () {
-	echo $0 " -> " "$@";
-}
-
+pushd $(dirname $0)
 
 SCRIPT=$(basename $0);
 IFS='' read -r -d '' HELP <<EOF
@@ -61,15 +57,23 @@ do
         
 		if [[ ! $? ]]; then log "Invalid date. Skipping."; continue; fi;
 
-        log "Starting download for $DATE.";
+        scripts/log.sh "Starting download for $DATE.";
         
         scripts/download.sh -d "$DATE" -l "$__LOC__" -t "$__TIME__" -o "$__DIR__";
 		
 		DOWNLOAD_ERROR=$?
-		if [[ $DOWNLOAD_ERROR -eq 99 ]] || [[ $DOWNLOAD_ERROR -eq 100 ]]; then exit $DOWNLOAD_ERROR; fi;
- 		if [[ $DOWNLOAD_ERROR -eq 111 ]]; then log "ERROR DURING DOWNLOAD -- ABORTING"; exit $DOWNLOAD_ERROR; fi;
+		if [[ $DOWNLOAD_ERROR -eq 99 ]] || [[ $DOWNLOAD_ERROR -eq 100 ]];
+		then 
+			exit $DOWNLOAD_ERROR; 
+		fi;
+ 		
+		if [[ $DOWNLOAD_ERROR -eq 111 ]]; 
+		then 
+			scripts/log.sh "ERROR DURING DOWNLOAD -- ABORTING"; 
+			exit $DOWNLOAD_ERROR; 
+		fi;
 
-        log "Download process finished.";
+        scripts/log.sh "Download process finished.";
         
         for dir in $__DIR__/$(date --date $DATE +%Y%m%d)/*;
         do
@@ -78,10 +82,12 @@ do
         done
 done
 
-log "Waiting for background scene alignment workflows..."
+scripts/log.sh "Waiting for background scene alignment workflows..."
 
-wait $PROC && log "Process finished for dates $@." || log "Failed with code $?" && exit 1;
+wait $PROC && scripts/log.sh "Process finished for dates $@." ||\
+	scripts/log.sh "Failed with code $?" && exit 1;
 wait
 
 log "Finished.";
+popd;
 
