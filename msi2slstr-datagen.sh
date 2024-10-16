@@ -26,7 +26,7 @@ $ DATASPACE_USERNAME=<Account email> DATASPACE_PASSWORD=<Account password> ./$SC
 				that is allowed between Sentinel-3 and Sentinel-2 scenes.
 				Defaults to 300 (5 minutes).
 	-o, --output   dir      The output directory in which to build the dataset.
-				Defaults to "./s2lstr-dataset".
+				Defaults to "./data".
 EOF
 
 
