@@ -60,7 +60,7 @@ validate_option () {
 }
 
 # Default datadump directory.
-__DATADIR__="s2lstr-dataset";
+__DATADIR__="data";
 # Default allowed time difference of Sentinel-2 acquisitions.
 MAXTIME=300;
 # Default minimum filesize.
@@ -85,6 +85,8 @@ do
   esac
 done
 
+scripts/log.sh "Starting the download process";
+
 if [[ -z $FROM ]]; then log "Date was not supplied: use -d/--date option."; exit 1; fi;
 if [[ -z $LOC ]]; then log "Geometry was not supplied: use -l/--loc option."; exit 1; fi;
 
@@ -104,32 +106,6 @@ LOC="geography'SRID=4326;POINT($LOC)'";
 # Query request function that returns server response.
 query () {
 
-	##############
-	# echo $@;
-	#############
-	
-        # Q="https://catalogue.dataspace.copernicus.eu/odata/v1/Products?\$filter="
-        # Q+="ContentDate/Start+gt+$2T00:00:00.000Z"
-        # Q+="+and+ContentDate/Start+lt+$3T00:00:00.000Z"
-        # Q+="+and+Attributes/OData.CSC.StringAttribute/any("
-        # Q+="att:att/Name+eq+'productType'"
-        # Q+="+and+att/OData.CSC.StringAttribute/Value+eq+'$1')"
-        
-        # if [[ $1 == "S2MSI1C" ]]
-        # then
-        #         Q+="+and+Attributes/OData.CSC.DoubleAttribute/any("
-        #         Q+="att:att/Name+eq+'cloudCover'"
-				# BUGFIX DoubleAttribute were changed in latest API
-				# and are now expecting float format. E.g. Previously
-				# expected '15.00' becomes simply 15.00.
-        #         Q+="+and+att/OData.CSC.DoubleAttribute/Value+lt+15.00)"
-        # fi
-
-        # Q+="+and+Odata.CSC.Intersects(area=$4)";
-        # Q+="&\$orderby=ContentDate/Start+asc";
-        # Q+="&\$top=30";
-        # Q+="&\$expand=Attributes";
-        
 		curl -D query_header_dump.txt --fail\
 			$(./scripts/query_format.sh "$1" "$2" "$3" "$4");
         }
@@ -150,7 +126,7 @@ get_date () { echo $1 | grep -oP "\d*(?=T)" | head -n 1; }
 
 # Extract datetimes from provided query responces.
 get_datetimes () { 
-echo $1 |  grep -oP "(?<=\"Start\":\")\d{4}-\d{2}-\d{2}T\d\d:\d\d:\d\d\.\d\d\dZ";
+	echo $1 |  grep -oP "(?<=\"Start\":\")\d{4}-\d{2}-\d{2}T\d\d:\d\d:\d\d\.\d+Z";
 }
 
 log "Querying for RBT products".
@@ -233,9 +209,18 @@ S2FILESIZE=( $(echo $L1CRESPONSE | grep -oP "$__FSIZE_REGEX__") )
 S2FNAMES=( $(echo $L1CRESPONSE | grep -oP "$__FNAME_REGEX__") )
 
 TIMEDIFFS=(); i=0;
+
+test__datetimes=$(get_datetimes "$L1CRESPONSE")
+
+if [ -z "$test__datetimes" ]
+then
+	scripts/log.sh "Can't read L1C acquisition times.";
+	exit 3;
+fi;
+
 for datetime in $(get_datetimes "$L1CRESPONSE")
 do
-        DIFF=$((`date -ud "$datetime" +%s` - `date -ud $REFERENCETIME +%s`))
+		DIFF=$((`date -ud "$datetime" +%s` - `date -ud $REFERENCETIME +%s`))
         DIFF=$(echo $DIFF | grep -oP "\d*")
         TIMEDIFFS[$i]=$DIFF; ((i++));
 done
@@ -247,12 +232,6 @@ do
         S2FOOTPRINTS[$i]=$(nospace "$__geometry"); ((i++));
 done
 unset IFS;
-
-# Extract relative orbit for directory tree convention.
-# Technically speaking DATE + RELORBIT + POINT should be unique.
-# NOT USED. RBT_DATE IS USED INSTEAD.
-# RELORBIT=$(echo $RBT_FILE | grep -oP "\d{4}_\d{3}_\d{3}_\d{4}" |\
-#  grep -oP "\d{3}_\d{4}" | grep -oP "\d{3}(?=_)");
 
 # Define directory path.
 __PATH__="$__DATADIR__/$RBT_DATE/$(date -ud $REFERENCETIME +%Y%m%dT%H%M%S)"
@@ -301,16 +280,6 @@ do
                         
 						((flag++))
 
-                # Store offline if code 202 (indicates successful order).
-                # This behavior changed. To change in the future.
-				# CURRENTLY DEPRECATED
-                # elif [[ $STATUS -eq 202 ]] && [[ $? -eq 0 ]]
-                # then
-                #         echo
-                #         echo Sentinel-2 product offline. Archive request successful.;
-                #         echo
-                #         S2OFFLINE[$i]=${S2IDS[$i]};
-                
 				else
                         log "WARNING: Uncaught status $STATUS";
                         log "Product Failure. Aborting."
@@ -384,42 +353,6 @@ do
         sleep 900
 done
 
-# DEPRECATED // TO REIMPLEMENT IN CASE CATALOGUE.DATASPACE.COPERNICUS.EU ADOPTS OFFLINE PRODUCT POLICY
-# check_online () {
-# for i in "${!S2OFFLINE[@]}"
-# do      
-#         if [[ -n ${S2OFFLINE[$i]} ]]
-#         then
-#                 STATUS=$(download "${S2OFFLINE[$i]}" "$__PATH__/${S2IDS[$i]}.zip")
-#                 if [[ $STATUS -eq 301 ]] && [[ $? -eq 0 ]]
-#                 then
-#                         unzip "$__PATH__/${S2FNAMES[$i]}.zip" -d $__PATH__ &&\
-#                         rm "$__PATH__/${S2FNAMES[$i]}.zip" &&\
-#                         unset S2OFFLINE[$i];
-#                         echo 
-#                         echo "Successfully downloaded ${S2FNAMES[$i]}"\
-#                         "with size ${S2FILESIZE[$i]}."
-#                         echo
-#                 elif [[ $STATUS -eq 202 ]] && [[ $? -eq 0 ]]
-#                 then
-#                         echo "Product still offline, retrieval on going."
-#                 else
-#                         echo "WARNING: Unhandled status $STATUS";
-#                         echo "Product request is likely to have failed."
-#                 fi
-#         fi
-# done
-# }
-
-# while [[ ${S2OFFLINE[@]} ]]
-# do
-#         echo
-#         echo "There are likely offline Sentinel-2 products. Trying again at $(date -d 'now + 15 minutes' +%T).";
-#         echo
-#         sleep 900;
-#         check_online
-# done
-#
 
 log "Finished $FROM."
 
