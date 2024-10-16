@@ -10,10 +10,6 @@
 # If parameters not provided exit.
 if [ $# -eq 0 ]; then echo Use -d/--dir to specify data directory.; exit 1; fi
 
-log () {
-	echo $0 " -> " "$@"
-}
-
 # Parse parameters.
 # __DIR__ variable holds the root directory containing
 # the RBT and LST products of same date.
@@ -36,7 +32,7 @@ LST=$(echo $__DIR__/S3*SL_2_LST*)
 # Current exit code for this case: 11.
 if [ ! -d $RBT ] && [ ! -d $LST ];
 then
-        log "ERROR: Sentinel-3 directories not found. Exiting."; 
+        scripts/log.sh "ERROR: Sentinel-3 directories not found. Exiting."; 
         exit 11; 
 fi;
 
@@ -95,7 +91,7 @@ EOF
 for __file__ in $__TMP__/{geod*,LST,S*radiance,S*BT,F*BT}_[iaf]n.nc
 do
         # Log file currently handled.
-        log $__file__;
+        scripts/log.sh "$__file__";
 
         if [ -f $__file__ ]
         then
@@ -113,10 +109,10 @@ do
                         GRID=${BASE##*_}
                         GRID=${GRID%.*}
                         
-                        log $NAME $GRID
+                        scripts/log.sh "$NAME $GRID"
                         buildvrt NETCDF:$__file__:$NAME $NAME
                         
-                        log $__TMP__/$NAME.vrt
+                        scripts/log.sh "$__TMP__/$NAME.vrt"
 
                         # Inject geolocation array info.
                         sed -i "2 i $(geolocation $GRID)" $__TMP__/$NAME.vrt
