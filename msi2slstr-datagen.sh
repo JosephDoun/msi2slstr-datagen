@@ -88,6 +88,6 @@ wait $PROC && scripts/log.sh "Process finished for dates $@." ||\
 	scripts/log.sh "Failed with code $?" && exit 1;
 wait
 
-log "Finished.";
+scripts/log.sh "Finished.";
 popd;
 

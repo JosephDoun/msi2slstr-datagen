@@ -97,8 +97,8 @@ do
         then
                 # Detach filename from path.
                 BASE=$(basename $__file__)
-                echo $BASE
-                if [ ${BASE%%_*} == "geodetic" ]
+                
+				if [ ${BASE%%_*} == "geodetic" ]
                 then
                         GRID=$(subdataset_name $BASE)
                         buildvrt NETCDF:$__file__:longitude_$GRID lon_$GRID

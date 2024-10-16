@@ -26,11 +26,6 @@
 
 shopt -s expand_aliases
 
-log () {
-	# Module logger
-	echo $0 " -> " $1;
-}
-
 ALLOWED_PRODTYPES=("SL_1_RBT___" "SL_2_LST___")
 OVRWRT=0;
 
@@ -53,7 +48,7 @@ validate_option () {
         done
         if [[ ! $valid -eq 1 ]]
         then
-                log "Invalid value \"$VAL_\" for option $OPT_"
+                scripts/log.sh "Invalid value \"$VAL_\" for option $OPT_"
                 local IFS=','; echo $0 " -> " "Allowed values:" "${ALL_[*]}";
                 exit 1;
         fi
@@ -87,8 +82,17 @@ done
 
 scripts/log.sh "Starting the download process";
 
-if [[ -z $FROM ]]; then log "Date was not supplied: use -d/--date option."; exit 1; fi;
-if [[ -z $LOC ]]; then log "Geometry was not supplied: use -l/--loc option."; exit 1; fi;
+if [[ -z $FROM ]];
+then 
+	scripts/log.sh "Date was not supplied: use -d/--date option."; 
+	exit 1; 
+fi;
+
+if [[ -z $LOC ]]; 
+then 
+	scripts/log.sh "Geometry was not supplied: use -l/--loc option."; 
+	exit 1; 
+fi;
 
 # Preset curl options
 alias curl='curl -# --retry 10 --fail-early'
@@ -129,14 +133,14 @@ get_datetimes () {
 	echo $1 |  grep -oP "(?<=\"Start\":\")\d{4}-\d{2}-\d{2}T\d\d:\d\d:\d\d\.\d+Z";
 }
 
-log "Querying for RBT products".
+scripts/log.sh "Querying for RBT products".
 RBTRESPONSE=$(query "SL_1_RBT___" $FROM $TO $LOC)
 
 ##################
 # echo $RBTRESPONSE;
 ##################
 
-log "Querying for LST products."
+scripts/log.sh "Querying for LST products."
 LSTRESPONSE=$(query "SL_2_LST___" $FROM $TO $LOC)
 
 #################
@@ -175,7 +179,7 @@ LSTSTART=${LST_FILE:16:15}
 # Assert product dates match.
 if [ ! $RBTSTART == $LSTSTART ]; 
 then
-	log "RBT $RBTSTART and LST $LSTSTART product start times do not match, aborting."; 
+	scripts/log.sh "RBT $RBTSTART and LST $LSTSTART product start times do not match, aborting."; 
 	
 	cat <<-EOF
 	
@@ -199,8 +203,8 @@ then
 	exit 111; 
 fi
 
-log "Sentinel-3 RBT Product -> $RBT_FILE"
-log "Sentinel-3 LST Product -> $LST_FILE"
+scripts/log.sh "Sentinel-3 RBT Product -> $RBT_FILE"
+scripts/log.sh "Sentinel-3 LST Product -> $LST_FILE"
 
 REFERENCETIME=$(get_datetimes "$RBTRESPONSE" | head -n 1)
 L1CONLINESTATUS=( $(echo $L1CRESPONSE | grep -oP $__ONLNE_REGEX__) )
@@ -239,11 +243,11 @@ __PATH__="$__DATADIR__/$RBT_DATE/$(date -ud $REFERENCETIME +%Y%m%dT%H%M%S)"
 # If exists, exit.
 if [ -d $__PATH__ ] && [ $OVRWRT -ne 1 ];
 then 
-        log "Directory already exists. Exiting."; 
+        scripts/log.sh "Directory already exists. Exiting."; 
         exit 11;
 elif [ ${#S2IDS[@]} -eq 0 ]
 then
-        log "No Sentinel-2 scenes matched the query. Exiting.";
+        scripts/log.sh "No Sentinel-2 scenes matched the query. Exiting.";
         exit 22;
 else 
         mkdir -p $__PATH__; 
@@ -251,7 +255,7 @@ fi
 
 
 # Download S2 products. Collect inaccessible ids.
-log "Downloading Sentinel-2 images for $FROM";
+scripts/log.sh "Downloading Sentinel-2 images for $FROM";
 
 
 S2OFFLINE=(); flag=0;
@@ -275,14 +279,14 @@ do
                           -s ${S2FNAMES[$i]} 1> /dev/null;
                         } &
 
-                        log "Downloaded ${S2FNAMES[$i]} with size 
-						$((${S2FILESIZE[$i]} / 1024 / 1024)) MB."
+                        scripts/log.sh "Downloaded ${S2FNAMES[$i]} with size\
+							$((${S2FILESIZE[$i]} / 1024 / 1024)) MB."
                         
 						((flag++))
 
 				else
-                        log "WARNING: Uncaught status $STATUS";
-                        log "Product Failure. Aborting."
+                        scripts/log.sh "WARNING: Uncaught status $STATUS";
+                        scripts/log.sh "Product Failure. Aborting."
                         rm -r $__PATH__ && exit 33;
                 fi
         fi
@@ -290,7 +294,7 @@ done
 
 if [[ $flag -eq 0 ]]
 then	
-        log "No Sentinel-2 scenes met criteria.";
+        scripts/log.sh "No Sentinel-2 scenes met criteria.";
 			
 		cat <<-EOF
 		
@@ -307,7 +311,7 @@ then
 fi
 
 # Download S3 products.
-log "Downloading Sentinel-3 products for $FROM."
+scripts/log.sh "Downloading Sentinel-3 products for $FROM."
 
 # Download endpoints return code 301 on successful request.
 CODE=301;
@@ -348,16 +352,17 @@ do
                 break;
         fi
 
-        log "There are likely offline products. Trying again at $(date -d "now + 15 minutes" +%T)."
+        scripts/log.sh "There are likely offline products.\
+			Trying again at $(date -d "now + 15 minutes" +%T)."
 
         sleep 900
 done
 
 
-log "Finished $FROM."
+scripts/log.sh "Finished $FROM."
 
-log "Awaiting image building background processes..."
+scripts/log.sh "Awaiting image building background processes..."
 
-wait $PROC3 && log "Success." || (log "Failure." && exit 12);
+wait $PROC3 && scripts/log.sh "Success." || (scripts/log.sh "Failure." && exit 12);
 wait
 
