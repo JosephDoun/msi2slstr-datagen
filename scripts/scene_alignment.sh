@@ -86,7 +86,8 @@ do
         
         scripts/log.sh "Cropping Sentinel-3 to a 210 x 210 pixels scene." 1>&2;
 
-        gdal_translate -srcwin 4 4 210 210\
+        gdal_translate -co "COMPRESS=DEFLATE" -co "PREDICTOR=2" -co "TILED=YES" \
+			-co "BLOCKXSIZE=16" -co "BLOCKYSIZE=16" -srcwin 4 4 210 210\
 			$s2dir/s3_coreg.tif $s2dir/S3SLSTR_$N.tif &&\
           rm $s2dir/s3_coreg.tif
 

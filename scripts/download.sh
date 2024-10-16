@@ -266,7 +266,8 @@ do
           [[ ${TIMEDIFFS[$i]} -le $MAXTIME ]] &&\
            [ ! -d $__PATH__/${S2FNAMES[$i]} ]
         then
-                STATUS=$(download "${S2IDS[$i]}" "$__PATH__/${S2FNAMES[$i]}.zip")
+			scripts/log.sh "Downloading image with id: ${S2IDS[$i]}"    
+			STATUS=$(download "${S2IDS[$i]}" "$__PATH__/${S2FNAMES[$i]}.zip")
                 if [[ $STATUS -eq 301 ]] && [[ $? -eq 0 ]]
                 then
 						# Start background building process
@@ -279,8 +280,7 @@ do
                           -s ${S2FNAMES[$i]} 1> /dev/null;
                         } &
 
-                        scripts/log.sh "Downloaded ${S2FNAMES[$i]} with size\
-							$((${S2FILESIZE[$i]} / 1024 / 1024)) MB."
+                        scripts/log.sh "Downloaded ${S2FNAMES[$i]} with size $((${S2FILESIZE[$i]} / 1024 / 1024)) MB."
                         
 						((flag++))
 
