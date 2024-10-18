@@ -30,9 +30,10 @@ ULLR () {
 }
 
 N=1;
+# Iterate over available tile folders.
 for s2dir in $__DIR__/??????
 do      
-        if [ ! -f $s2dir/S2MSI.tmp.tif ];
+        if [ ! -e $s2dir/S2MSI.tmp.tif ];
         then 
         	scripts/log.sh "Folder appears processed or invalid. Skipping.";
 			continue; 
@@ -45,14 +46,13 @@ do
         
         # Cast S3 SRS to Sentinel-2 UTM grid.
         gdalwarp -r bilinear -tr 500 500 -s_srs EPSG:4326 \
-        -t_srs EPSG:$EPSG $S3FILE $s2dir/s3.tmp.tif -co "COMPRESS=LZW" \
+        -t_srs EPSG:$EPSG $S3FILE $s2dir/s3.tmp.tif \
         -overwrite;
 
 
         # This performs a cropping action to projwin box.
         gdal_translate -projwin $(ULLR $s2dir/S2MSI.tmp.tif) \
-        -projwin_srs EPSG:$EPSG $s2dir/s3.tmp.tif $s2dir/s3.patch.tmp.tif \
-        -co "COMPRESS=LZW" &&\
+        -projwin_srs EPSG:$EPSG $s2dir/s3.tmp.tif $s2dir/s3.patch.tmp.tif &&\
         rm $s2dir/s3.tmp.tif
         
         scripts/log.sh "Checking Sentinel-3 patch validity.";
@@ -88,11 +88,11 @@ do
 
         gdal_translate -co "COMPRESS=DEFLATE" -co "PREDICTOR=2" -co "TILED=YES" \
 			-co "BLOCKXSIZE=16" -co "BLOCKYSIZE=16" -srcwin 4 4 210 210\
-			$s2dir/s3_coreg.tif $s2dir/S3SLSTR_$N.tif &&\
+			$s2dir/s3_coreg.tif $s2dir/S3SLSTR.tif &&\
           rm $s2dir/s3_coreg.tif
 
         read -a S2BOX < <(ULLR $s2dir/S2MSI.tmp.tif | sed "s/\.[0-9]\+//g")
-        read -a S3BOX < <(ULLR $s2dir/S3SLSTR_$N.tif | sed "s/\.[0-9]\+//g")
+        read -a S3BOX < <(ULLR $s2dir/S3SLSTR.tif | sed "s/\.[0-9]\+//g")
         
         # LAST STEP: Crop S2MSI image to rounded S3 extents.
         scripts/log.sh "Cropping Sentinel-2 scene to the exact extents of the generated Sentinel-3 patch.";
@@ -103,16 +103,21 @@ do
         gdal_translate -co "COMPRESS=DEFLATE" -co "TILED=YES"\
 			-co "PREDICTOR=2" -co "BLOCKXSIZE=16"\
 			-co "BLOCKYSIZE=16" -projwin ${S3BOX[@]}\
-         $s2dir/S2MSI.tmp.tif $s2dir/S2MSI_$N.tif &&\
+         $s2dir/S2MSI.tmp.tif $s2dir/S2MSI.tif &&\
          rm $s2dir/S2MSI.tmp.tif;
 
         ((N++));
 done
 
 # Sentinel-3 file not necessary.
-rm $S3FILE;
+if [ -e $S3FILE ]
+then
+	rm $S3FILE;
+fi;
 
-# Check there are subdirectories remaining (directory is empty).
-# Otherwise remove root directory of S3 acquisition.
-# if [ -z "$(ls -A $__DIR__)" ]; then rmdir $__DIR__; fi
+# If dirsize is 0, remove.
+if [ ! -s $__DIR__ ]; 
+then 
+	rmdir -p $__DIR__; 
+fi
 

@@ -238,7 +238,7 @@ done
 unset IFS;
 
 # Define directory path.
-__PATH__="$__DATADIR__/$RBT_DATE/$(date -ud $REFERENCETIME +%Y%m%dT%H%M%S)"
+__PATH__="$__DATADIR__/$RBT_DATE"
 
 # If exists, exit.
 if [ -d $__PATH__ ] && [ $OVRWRT -ne 1 ];
@@ -314,6 +314,7 @@ fi
 scripts/log.sh "Downloading Sentinel-3 products for $FROM."
 
 # Download endpoints return code 301 on successful request.
+# WARNING: This might be subject to change.
 CODE=301;
 while :
 do
@@ -330,13 +331,13 @@ do
 
                 { 
                 unzip -o "$__PATH__/$RBT_FILE.zip"\
-                        -d "$__PATH__" &&\
+                        -d "$__PATH__" 1> /dev/null &&\
                         rm "$__PATH__/$RBT_FILE.zip";
                 } &
                 PROC1=$!
                 {
                 unzip -o "$__PATH__/$LST_FILE.zip"\
-                        -d "$__PATH__" &&\
+                        -d "$__PATH__" 1> /dev/null &&\
                         rm "$__PATH__/$LST_FILE.zip";
                 } &
                 PROC2=$!

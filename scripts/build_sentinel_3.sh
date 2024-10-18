@@ -69,6 +69,7 @@ geolocation () {
 # Georeference data injection function.
 # It inserts the georeference bands according to the VRT specification
 # to be used for generating a georeferenced tiff upon transformation.
+# NOTE: This can be instead injected with gdal_translate more correctly.
         echo "`cat <<EOF
 \ \ <Metadata Domain=\"GEOLOCATION\">\n\
     <MDI key=\"X_DATASET\">$__TMP__/lon_$1.vrt</MDI>\n\
@@ -149,7 +150,6 @@ $__TMP__/{S1,S2,S3,S4,S5,S6,S7,S8,S9,F1,F2,LST,solar_zenith,solar_azimuth,sat_ze
 # Include copernicus identifier as metadata in TIF.
 gdal_translate -mo "S3_RBT_PRODUCT=$(basename $RBT)" \
 -mo "S3_LST_PRODUCT=$(basename $LST)" \
--co "COMPRESS=LZW" \
 -a_srs EPSG:4326 \
 $__TMP__/merged.vrt $__DIR__/S3SLSTR.tif &&\
 rm -r $RBT && rm -r $LST &&\

@@ -62,7 +62,7 @@ gdalbuildvrt -resolution highest\
 
 scripts/log.sh "Building multiband TIF file for Sentinel-2 scene."
 
-gdal_translate -co "COMPRESS=LZW" -mo "S2_PRODUCT=$ID" \
+gdal_translate -mo "S2_PRODUCT=$ID" \
         -mo "ZENITH_SOLAR=${ZENITHS[0]}"\
 		-mo "AZIMUTH_SOLAR=${AZIMUTHS[0]}"\
         -mo "ZENITH_B01=${ZENITHS[1]}"\
