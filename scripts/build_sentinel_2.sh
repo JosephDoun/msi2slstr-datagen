@@ -95,3 +95,6 @@ gdal_translate -mo "S2_PRODUCT=$ID" \
         rm -r $__DIR__/$TILE/*.{vrt,jp2} $s2_dir;
 
 
+scripts/scene_alignment.sh -d $__DIR__/$TILE;
+
+

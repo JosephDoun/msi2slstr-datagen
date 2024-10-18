@@ -214,13 +214,15 @@ S2FNAMES=( $(echo $L1CRESPONSE | grep -oP "$__FNAME_REGEX__") )
 
 TIMEDIFFS=(); i=0;
 
+##### TEST
 test__datetimes=$(get_datetimes "$L1CRESPONSE")
-
 if [ -z "$test__datetimes" ]
 then
+	# Would indicate an error in return message or in parsing;
 	scripts/log.sh "Can't read L1C acquisition times.";
 	exit 3;
 fi;
+#########
 
 for datetime in $(get_datetimes "$L1CRESPONSE")
 do
@@ -254,61 +256,14 @@ else
 fi
 
 
-# Download S2 products. Collect inaccessible ids.
-scripts/log.sh "Downloading Sentinel-2 images for $FROM";
+##################################################################
+#
+#	ADD CHECK FOR SENTINEL-2 VALIDITY HERE;
+#	SO SENTINEL-3 DOWNLOADING CAN BE SKIPPED IF UNECESSARY;
+#
+#
+##################################################################
 
-
-S2OFFLINE=(); flag=0;
-for i in "${!S2FOOTPRINTS[@]}"
-do
-        if [ $RBT_DATE == $(get_date ${S2FNAMES[$i]}) ] &&\
-         [[ ${S2FILESIZE[$i]%.*} -ge $MINFILESIZE ]] &&\
-          [[ ${TIMEDIFFS[$i]} -le $MAXTIME ]] &&\
-           [ ! -d $__PATH__/${S2FNAMES[$i]} ]
-        then
-			scripts/log.sh "Downloading image with id: ${S2IDS[$i]}"    
-			STATUS=$(download "${S2IDS[$i]}" "$__PATH__/${S2FNAMES[$i]}.zip")
-                if [[ $STATUS -eq 301 ]] && [[ $? -eq 0 ]]
-                then
-						# Start background building process
-						# of Sentinel-2 image.
-                        { 
-                        unzip -o "$__PATH__/${S2FNAMES[$i]}.zip"\
-                         -d "$__PATH__" 1> /dev/null &&\
-                         rm "$__PATH__/${S2FNAMES[$i]}.zip" &&\
-                         scripts/build_sentinel_2.sh -d $__PATH__\
-                          -s ${S2FNAMES[$i]} 1> /dev/null;
-                        } &
-
-                        scripts/log.sh "Downloaded ${S2FNAMES[$i]} with size $((${S2FILESIZE[$i]} / 1024 / 1024)) MB."
-                        
-						((flag++))
-
-				else
-                        scripts/log.sh "WARNING: Uncaught status $STATUS";
-                        scripts/log.sh "Product Failure. Aborting."
-                        rm -r $__PATH__ && exit 33;
-                fi
-        fi
-done
-
-if [[ $flag -eq 0 ]]
-then	
-        scripts/log.sh "No Sentinel-2 scenes met criteria.";
-			
-		cat <<-EOF
-		
-		All Sentinel-2 images were acquired more than $(($MAXTIME/60)) 
-		minutes apart or were less than $(($MINFILESIZE/1024/1024))mb in size.
-
-		Sentinel-2 acquisition time differences (seconds): ${TIMEDIFFS[@]}
-		Sentinel-2 filesizes (Bytes): ${S2FILESIZE[@]}
-		
-		EOF
-		
-        rmdir -p $__PATH__ 2> /dev/null
-        exit 33;
-fi
 
 # Download S3 products.
 scripts/log.sh "Downloading Sentinel-3 products for $FROM."
@@ -323,7 +278,8 @@ do
 
         [[ $STATUSLST -ne $CODE ]] &&\
         STATUSLST=$(download "$LST_ID" "$__PATH__/$LST_FILE.zip");
-
+		
+		# Correct HTTP status code;
         if [[ $STATUSRBT -eq $CODE ]] &&\
          [[ $STATUSLST -eq $CODE ]] &&\
          [[ $? -eq 0 ]]
@@ -340,16 +296,17 @@ do
                         -d "$__PATH__" 1> /dev/null &&\
                         rm "$__PATH__/$LST_FILE.zip";
                 } &
-                PROC2=$!
-
-                wait $PROC1 && wait $PROC2
+				
+				# Unzip SEN3 parts in parallel and wait;
+                wait;
 
                 if [[ $? -eq 0 ]]
                 then
-                        scripts/build_sentinel_3.sh -d $__PATH__ &
-                        PROC3=$!
+                    # Build SEN3 tif. 
+					scripts/build_sentinel_3.sh -d $__PATH__ 1> /dev/null &
+					SENTINEL3_PROCESS=$!;
                 fi
-
+				
                 break;
         fi
 
@@ -360,10 +317,93 @@ do
 done
 
 
+# Download S2 products. Collect inaccessible ids.
+scripts/log.sh "Checking ${#S2FOOTPRINTS[@]} Sentinel-2 images for $FROM";
+
+S2OFFLINE=(); count_downloaded=0;
+for i in "${!S2FOOTPRINTS[@]}"
+do
+		# Dates match;
+        if [ $RBT_DATE == $(get_date ${S2FNAMES[$i]}) ] &&\
+         	# Size sufficient;
+			[[ ${S2FILESIZE[$i]%.*} -ge $MINFILESIZE ]] &&\
+          		# Time difference acceptable;
+				[[ ${TIMEDIFFS[$i]} -le $MAXTIME ]] &&\
+		# Directory does not already exist.
+        [ ! -d $__PATH__/${S2FNAMES[$i]} ]
+        then
+			scripts/log.sh "Downloading image with id: ${S2IDS[$i]}"    
+			STATUS=$(download "${S2IDS[$i]}" "$__PATH__/${S2FNAMES[$i]}.zip")
+                if [[ $STATUS -eq 301 ]] && [[ $? -eq 0 ]]
+                then
+						wait $SENTINEL3_PROCESS;
+						
+						if [ $? -eq 0 ]
+						then
+							echo "$0 -> Finished building the Sentinel-3 image."
+						else
+							exit 33;
+						fi
+
+						# Start background building process
+						# of Sentinel-2 image.
+                        { 
+                        unzip -o "$__PATH__/${S2FNAMES[$i]}.zip"\
+                         -d "$__PATH__" 1> /dev/null &&\
+                         rm "$__PATH__/${S2FNAMES[$i]}.zip" &&\
+                         scripts/build_sentinel_2.sh -d $__PATH__\
+                          -s ${S2FNAMES[$i]} 1> /dev/null
+                        } &
+						
+                        scripts/log.sh "Downloaded ${S2FNAMES[$i]} with size $((${S2FILESIZE[$i]} / 1024 / 1024)) MB."
+                        
+						((count_downloaded++))
+
+				else
+                        scripts/log.sh "WARNING: Uncaught status $STATUS";
+                        scripts/log.sh "Product Failure. Aborting."
+                        rm -r $__PATH__ && exit 33;
+                fi
+        fi
+done
+
+if [[ $count_downloaded -eq 0 ]]
+then	 
+		scripts/log.sh "No Sentinel-2 scenes met criteria." 1>&2;
+
+		kill $(jobs -p | tr "\n" " ");
+		
+		wait;
+
+		cat <<-EOF
+		
+		All Sentinel-2 images were acquired more than $(($MAXTIME/60)) 
+		minutes apart or were less than $(($MINFILESIZE/1024/1024))mb in size.
+
+		Sentinel-2 acquisition time differences (seconds): ${TIMEDIFFS[@]}
+		Sentinel-2 filesizes (Bytes): ${S2FILESIZE[@]}
+		
+		EOF
+		
+        rm -r $__PATH__ 2> /dev/null
+        exit 33;
+fi
+
+
+scripts/log.sh "Waiting for background scene alignment workflows..."
+wait;
+
+# Sentinel-3 file not necessary.
+if [ -e $S3FILE ]
+then
+	rm $__PATH__/S3SLSTR.tif;
+fi;
+
+# If dirsize is 0, remove.
+if [ ! -s $__PATH__ ]; 
+then
+	echo "Removing empty directory" 1>&2;
+	rmdir -p $__PATH__; 
+fi
 scripts/log.sh "Finished $FROM."
-
-scripts/log.sh "Awaiting image building background processes..."
-
-wait $PROC3 && scripts/log.sh "Success." || (scripts/log.sh "Failure." && exit 12);
-wait
 

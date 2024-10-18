@@ -74,17 +74,9 @@ do
 		fi;
 
         scripts/log.sh "Download and image building process finished.";
-        
-        __dir__=$__DIR__/$(date --date $DATE +%Y%m%d);
-        scripts/scene_alignment.sh -d $__dir__;
 done
 
-scripts/log.sh "Waiting for background scene alignment workflows..."
+scripts/log.sh "Finished workflow.";
 
-wait $PROC && echo "$0 -> Process finished for dates $@." ||\
-	scripts/log.sh "Failed with code $?" && exit 1;
-wait
-
-scripts/log.sh "Finished.";
 popd;
 

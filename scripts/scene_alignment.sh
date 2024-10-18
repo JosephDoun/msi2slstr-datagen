@@ -7,7 +7,11 @@
 #
 
 # Exit if directory parameter not provided.
-if [ $# -eq 0 ]; then echo $0 " -> " Use -d/--dir to provide a directory.; exit 1; fi
+if [ $# -eq 0 ];
+then 
+	echo $0 " -> " Use -d/--dir to provide a directory to process.; 
+	exit 1; 
+fi
 
 # Parse parameters.
 # __DIR__ holds the provided directory path.
@@ -20,7 +24,8 @@ do
         esac
 done
 
-S3FILE=$__DIR__/S3SLSTR.tif
+# Reference SEN3 image to be s
+S3FILE=$__DIR__/../S3SLSTR.tif
 
 ULLR () { 
 	echo $(gdalinfo $1 | grep -oP \
@@ -29,95 +34,96 @@ ULLR () {
 			   "(?<=Lower Right \(  )\d+\.\d+, \d+\.\d+(?=\))" | sed "s/,//g" );
 }
 
-N=1;
 # Iterate over available tile folders.
-for s2dir in $__DIR__/??????
-do      
-        if [ ! -e $s2dir/S2MSI.tmp.tif ];
-        then 
-        	scripts/log.sh "Folder appears processed or invalid. Skipping.";
-			continue; 
-        fi
+if [ ! -e $__DIR__/S2MSI.tmp.tif ];
+then 
+	scripts/log.sh "Folder appears processed or invalid. Skipping." 1>&2;
+	exit 33; 
+fi
         
-        EPSG=$(gdalinfo $s2dir/S2MSI.tmp.tif | grep -oP "(?<=\"EPSG\",)\d{5}")
+EPSG=$(gdalinfo $__DIR__/S2MSI.tmp.tif | grep -oP "(?<=\"EPSG\",)\d{5}")
 
-        scripts/log.sh "EPSG: $EPSG Extents: $(ULLR $s2dir/S2MSI.tmp.tif | sed "s/\.[0-9]\{3\}//g")"
-        scripts/log.sh "Generating projected Sentinel-3 patch matching the Sentinel-2 scene." 1>&2;
-        
-        # Cast S3 SRS to Sentinel-2 UTM grid.
-        gdalwarp -r bilinear -tr 500 500 -s_srs EPSG:4326 \
-        -t_srs EPSG:$EPSG $S3FILE $s2dir/s3.tmp.tif \
+
+scripts/log.sh "EPSG: $EPSG Extents: $(ULLR $__DIR__/S2MSI.tmp.tif | sed "s/\.[0-9]\{3\}//g")"
+scripts/log.sh "Generating projected Sentinel-3 patch matching the Sentinel-2 scene.";
+
+
+
+# Cast S3 SRS to Sentinel-2 UTM grid.
+gdalwarp -r bilinear -tr 500 500 -s_srs EPSG:4326 \
+        -t_srs EPSG:$EPSG $S3FILE $__DIR__/s3.tmp.tif \
         -overwrite;
 
 
-        # This performs a cropping action to projwin box.
-        gdal_translate -projwin $(ULLR $s2dir/S2MSI.tmp.tif) \
-        -projwin_srs EPSG:$EPSG $s2dir/s3.tmp.tif $s2dir/s3.patch.tmp.tif &&\
-        rm $s2dir/s3.tmp.tif
+# This performs a cropping action to projwin box.
+gdal_translate -projwin $(ULLR $__DIR__/S2MSI.tmp.tif) \
+        -projwin_srs EPSG:$EPSG $__DIR__/s3.tmp.tif $__DIR__/s3.patch.tmp.tif &&\
+        rm $__DIR__/s3.tmp.tif
         
-        scripts/log.sh "Checking Sentinel-3 patch validity.";
-        
-        VALID=$(gdalinfo -stats $s2dir/s3.patch.tmp.tif |\
-         grep -oP "(?<=STATISTICS_VALID_PERCENT=)\d+" | head -n 1)
-        
-		if [ $VALID -lt 50 ];
-        then 
-                scripts/log.sh "Sentinel-3 patch out of sensor geometry. Removing directory."
-                rm -r $s2dir && continue;
-        else
-                scripts/log.sh "Image OK."
-                rm $s2dir/s3.patch.tmp.tif.aux.xml;
-        fi
 
-        ########################################################
-		# CORREGISTRATION
-        ########################################################
-		scripts/log.sh "Starting arosics workflow for $s2dir.";
 
-        arosics local -rsp_alg_calc 0 -rsp_alg_deshift 0 -br 9 -bs 3\
+
+##################################################
+# VALID VALUES CHECK
+# ################################################
+scripts/log.sh "Checking Sentinel-3 patch validity.";
+
+VALID=$(gdalinfo -stats $__DIR__/s3.patch.tmp.tif |\
+grep -oP "(?<=STATISTICS_VALID_PERCENT=)\d+" | head -n 1)
+        
+if [ $VALID -lt 50 ];
+then 
+	echo $0 value validity of image at $VALID %.;
+	scripts/log.sh "Sentinel-3 patch out of sensor geometry. Removing directory." 1>&2;
+    rm -r $__DIR__;
+	exit 93;
+else
+	scripts/log.sh "Image OK."
+	rm $__DIR__/s3.patch.tmp.tif.aux.xml;
+fi
+
+
+
+########################################################
+# CORREGISTRATION
+########################################################
+scripts/log.sh "Starting arosics workflow for $__DIR__.";
+
+arosics local -rsp_alg_calc 0 -rsp_alg_deshift 0 -br 9 -bs 3\
 			-fmt_out GTIFF -ws 64 64\
          -nodata "0" "-32768" -min_reliability 10\
-          $s2dir/S2MSI.tmp.tif $s2dir/s3.patch.tmp.tif 2\
-          -o "$s2dir/s3_coreg.tif" 2> /dev/null && rm $s2dir/s3.patch.tmp.tif
+          $__DIR__/S2MSI.tmp.tif $__DIR__/s3.patch.tmp.tif 2\
+          -o "$__DIR__/s3_coreg.tif" 2> /dev/null &&\
+		  rm $__DIR__/s3.patch.tmp.tif
 
-        # If output file was not generated continue to next iteration.
-        [[ ! -f "$s2dir/s3_coreg.tif" ]] &&\
-			scripts/log.sh "Arosics workflow failed. Skipping." && continue;
-        
-        scripts/log.sh "Cropping Sentinel-3 to a 210 x 210 pixels scene." 1>&2;
+# If output file was not generated continue to next iteration.
+if [[ ! -e "$__DIR__/s3_coreg.tif" ]]
+then
+	scripts/log.sh "Arosics workflow failed. Skipping." 1>&2;
+	exit 90;
+fi
+       
+scripts/log.sh "Cropping Sentinel-3 to a 210 x 210 pixels scene.";
 
-        gdal_translate -co "COMPRESS=DEFLATE" -co "PREDICTOR=2" -co "TILED=YES" \
+gdal_translate -co "COMPRESS=DEFLATE" -co "PREDICTOR=2" -co "TILED=YES" \
 			-co "BLOCKXSIZE=16" -co "BLOCKYSIZE=16" -srcwin 4 4 210 210\
-			$s2dir/s3_coreg.tif $s2dir/S3SLSTR.tif &&\
-          rm $s2dir/s3_coreg.tif
+			$__DIR__/s3_coreg.tif $__DIR__/S3SLSTR.tif &&\
+          rm $__DIR__/s3_coreg.tif
 
-        read -a S2BOX < <(ULLR $s2dir/S2MSI.tmp.tif | sed "s/\.[0-9]\+//g")
-        read -a S3BOX < <(ULLR $s2dir/S3SLSTR.tif | sed "s/\.[0-9]\+//g")
+read -a S2BOX < <(ULLR $__DIR__/S2MSI.tmp.tif | sed "s/\.[0-9]\+//g")
+read -a S3BOX < <(ULLR $__DIR__/S3SLSTR.tif | sed "s/\.[0-9]\+//g")
         
-        # LAST STEP: Crop S2MSI image to rounded S3 extents.
-        scripts/log.sh "Cropping Sentinel-2 scene to the exact extents of the generated Sentinel-3 patch.";
+# LAST STEP: Crop S2MSI image to rounded S3 extents.
+scripts/log.sh "Cropping Sentinel-2 scene to the exact extents of the generated Sentinel-3 patch.";
 		
-        echo "From ${S2BOX[@]}";
-        echo "To   ${S3BOX[@]}";
+echo "From ${S2BOX[@]}";
+echo "To   ${S3BOX[@]}";
 
-        gdal_translate -co "COMPRESS=DEFLATE" -co "TILED=YES"\
+gdal_translate -co "COMPRESS=DEFLATE" -co "TILED=YES"\
 			-co "PREDICTOR=2" -co "BLOCKXSIZE=16"\
 			-co "BLOCKYSIZE=16" -projwin ${S3BOX[@]}\
-         $s2dir/S2MSI.tmp.tif $s2dir/S2MSI.tif &&\
-         rm $s2dir/S2MSI.tmp.tif;
+         $__DIR__/S2MSI.tmp.tif $__DIR__/S2MSI.tif &&\
+         rm $__DIR__/S2MSI.tmp.tif;
 
-        ((N++));
-done
 
-# Sentinel-3 file not necessary.
-if [ -e $S3FILE ]
-then
-	rm $S3FILE;
-fi;
-
-# If dirsize is 0, remove.
-if [ ! -s $__DIR__ ]; 
-then 
-	rmdir -p $__DIR__; 
-fi
 
