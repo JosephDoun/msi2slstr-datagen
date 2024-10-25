@@ -105,9 +105,9 @@ fi
        
 scripts/log.sh "Cropping Sentinel-3 to a 210 x 210 pixels scene.";
 
-gdal_translate -co "COMPRESS=DEFLATE" -co "PREDICTOR=2" -co "TILED=YES" \
+gdal_translate -co "COMPRESS=ZSTD" -co "PREDICTOR=2" -co "TILED=YES" \
 			-co "BLOCKXSIZE=16" -co "BLOCKYSIZE=16" -srcwin 4 4 210 210\
-			$__DIR__/s3_coreg.tif $__DIR__/S3SLSTR.tif &&\
+			-ot float32 $__DIR__/s3_coreg.tif $__DIR__/S3SLSTR.tif &&\
           rm $__DIR__/s3_coreg.tif
 
 read -a S2BOX < <(ULLR $__DIR__/S2MSI.tmp.tif | sed "s/\.[0-9]\+//g")
@@ -119,9 +119,9 @@ scripts/log.sh "Cropping Sentinel-2 scene to the exact extents of the generated 
 echo "From ${S2BOX[@]}";
 echo "To   ${S3BOX[@]}";
 
-gdal_translate -co "COMPRESS=DEFLATE" -co "TILED=YES"\
+gdal_translate -co "COMPRESS=ZSTD" -co "TILED=YES"\
 			-co "PREDICTOR=2" -co "BLOCKXSIZE=16"\
-			-co "BLOCKYSIZE=16" -projwin ${S3BOX[@]}\
+			-co "BLOCKYSIZE=16" -ot int16 -projwin ${S3BOX[@]}\
          $__DIR__/S2MSI.tmp.tif $__DIR__/S2MSI.tif &&\
          rm $__DIR__/S2MSI.tmp.tif;
 
