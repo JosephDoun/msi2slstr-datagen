@@ -243,21 +243,13 @@ else
 fi
 
 
-##################################################################
-#
-#	ADD CHECK FOR SENTINEL-2 VALIDITY HERE;
-#	SO SENTINEL-3 DOWNLOADING CAN BE SKIPPED IF UNECESSARY;
-#
-#
-##################################################################
-
-
+download_sentinel3_products () {
 # Download S3 products.
 scripts/log.sh "Downloading Sentinel-3 products for $FROM."
 
 # Download endpoints return code 301 on successful request.
 # WARNING: This might be subject to change.
-CODE=301;
+CODE=200;
 while :
 do
         [[ $STATUSRBT -ne $CODE ]] &&\
@@ -273,38 +265,44 @@ do
          [[ $STATUSLST -eq $CODE ]] &&\
          [[ $? -eq 0 ]]
         then
-
-                { 
+            echo "Unzipping RBT archive";
+            { 
                 unzip -o "$__PATH__/$RBT_FILE.zip"\
                         -d "$__PATH__" 1> /dev/null &&\
                         rm "$__PATH__/$RBT_FILE.zip";
-                } &
-                PROC1=$!
-                {
+            } &
+            PROC1=$!
+            echo "Unzipping LST archive";
+            {
                 unzip -o "$__PATH__/$LST_FILE.zip"\
                         -d "$__PATH__" 1> /dev/null &&\
                         rm "$__PATH__/$LST_FILE.zip";
-                } &
+            } &
 				
-				# Unzip SEN3 parts in parallel and wait;
-                wait;
+	    # Unzip SEN3 parts in parallel and wait;
+            echo Waiting to unzip Sentinel 3 archives...
+            wait;
 
-                if [[ $? -eq 0 ]]
-                then
-                    # Build SEN3 tif. 
-					scripts/build_sentinel_3.sh -d $__PATH__ 1> /dev/null &
-					SENTINEL3_PROCESS=$!;
-                fi
-				
-                break;
+            if [[ $? -eq 0 ]]
+            then
+                echo Starting background building process of Sentinel-3 archive...
+                # Build SEN3 tif. 
+		scripts/build_sentinel_3.sh -d $__PATH__ 1> /dev/null &
+                SENTINEL3_PROCESS=$!;
+            fi
+            
+            wait;
+            
+            SEN3_DOWNLOADED=0;
+            break;
         fi
 
-        scripts/log.sh "There are likely offline products.\
+        scripts/log.sh "There likely are offline products.\
 			Trying again at $(date -d "now + 15 minutes" +%T)."
 
         sleep 900
 done
-
+}
 
 # Download S2 products. Collect inaccessible ids.
 scripts/log.sh "Checking ${#S2FOOTPRINTS[@]} Sentinel-2 images for $FROM";
