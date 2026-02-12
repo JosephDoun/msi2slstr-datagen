@@ -21,7 +21,7 @@
 # "https://scihub.copernicus.eu/dhus/odata/v1/Products('59a7ee03-da3b-483a-a0e3-95a4445b8e99')/\$value"
 #
 # NEW API LINK FOR MIGRATION:
-# https://catalogue.dataspace.copernicus.eu/odata/v1/Products?
+# https://download.dataspace.copernicus.eu/odata/v1/Products?
 #
 
 shopt -s expand_aliases
@@ -185,28 +185,9 @@ LSTSTART=${LST_FILE:16:15}
 # Assert product dates match.
 if [ ! $RBTSTART == $LSTSTART ]; 
 then
-	scripts/log.sh "RBT $RBTSTART and LST $LSTSTART product start times do not match, aborting."; 
-	
-	cat <<-EOF
-	
-	UNDEFINED BEHAVIOUR // AVOID USAGE // SELECT LATER DATE
-	
-	# NOTE for future versions.
-
-	If you are trying to generate data for an earlier year e.g. 2019
-	the acquisition operations and data generation workflows of the platform
-	may have been different.
-
-	That is because RBT acquisitions and corresponding LST acquisitions did 
-	not share the same starting time signature earlier. LST products had
-	a longer acquisition window and acquired images for multiple RBT footprints.
-	
-	As a result, acquisition start times for matching products may differ.
-
-	THE USED API SEEMS TO BE FUNCTIONING PROPERLY ONLY FOR 2023 AND LATE 2022.
-	EOF
-
-	exit 111; 
+    scripts/log.sh "RBT $RBTSTART and LST $LSTSTART product start times do not match."; 
+    scripts/log.sh "This pair will be skipped.";
+    exit 1; 
 fi
 
 scripts/log.sh "Sentinel-3 RBT Product -> $RBT_FILE"
@@ -220,7 +201,7 @@ S2FNAMES=( $(echo $L1CRESPONSE | grep -oP "$__FNAME_REGEX__") )
 
 TIMEDIFFS=(); i=0;
 
-##### TEST
+##### ASSERTION
 test__datetimes=$(get_datetimes "$L1CRESPONSE")
 if [ -z "$test__datetimes" ]
 then
