@@ -134,7 +134,7 @@ get_date () { echo $1 | grep -oP "\d*(?=T)" | head -n 1; }
 
 # Extract datetimes from provided query responces.
 get_datetimes () { 
-	echo $1 |  grep -oP "(?<=\"Start\":\")\d{4}-\d{2}-\d{2}T\d\d:\d\d:\d\d\.\d+Z";
+    echo $1 |  grep -oP "(?<=\"Start\":\")\d{4}-\d{2}-\d{2}T\d\d:\d\d:\d\d\.\d+Z";
 }
 
 scripts/log.sh "Querying for RBT products".
