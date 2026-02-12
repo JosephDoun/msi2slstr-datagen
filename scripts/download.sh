@@ -34,24 +34,28 @@ OVRWRT=0;
 nospace () { echo $1 | sed "s/ /%20/g"; }
 
 validate_option () {
-        local OPT_=$1; shift;
-        local VAL_=$1; shift;
-        local ALL_=("$@");
-        
-        for val_ in ${ALL_[@]}
-        do
-                if [ $VAL_ == $val_ ]
-                then
-                        local valid=1;
-                        break;
-                fi
-        done
-        if [[ ! $valid -eq 1 ]]
+    # TODO
+    # Usage validate_option "option" "allowed_value_1" "allowed_value_2" ...
+
+    # local OPT_=$1; shift;
+    local VAL_=$1; shift;
+    local ALL_=("$@");
+
+    for val_ in ${ALL_[@]}
+    do
+        if [ $VAL_ == $val_ ]
         then
-                scripts/log.sh "Invalid value \"$VAL_\" for option $OPT_"
-                local IFS=','; echo $0 " -> " "Allowed values:" "${ALL_[*]}";
-                exit 1;
+            local valid=1;
+            break;
         fi
+    done
+
+    if [[ ! $valid -eq 1 ]]
+    then
+        scripts/log.sh "Invalid value \"$VAL_\" for option $OPT_"
+        local IFS=','; echo $0 " -> " "Allowed values:" "${ALL_[*]}";
+        exit 1;
+    fi
 }
 
 # Default datadump directory.
