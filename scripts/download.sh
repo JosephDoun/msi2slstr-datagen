@@ -109,9 +109,8 @@ LOC="geography'SRID=4326;POINT($LOC)'";
 # Query request function that returns server response.
 query () {
 
-		curl -D query_header_dump.txt --fail\
-			$(./scripts/query_format.sh "$1" "$2" "$3" "$4");
-        }
+    curl -D query_header_dump.txt --fail $(./scripts/query_format.sh "$1" "$2" "$3" "$4");
+}
 
 # Function that downloads product from link.
 download () {
