@@ -69,18 +69,13 @@ MINFILESIZE=$((700*1024*1024))
 while [ "$#" -gt 0 ];
 do
   case "$1" in
-          -d|--date)
-          FROM=$(date -d "$2" +%F);
-		  TO=$(date -d "$FROM + 1 day" +%F);
-          shift 2;;
-          -l|--loc) LOC=$(nospace "$2"); shift 2;;
-		  -o|--out) __DATADIR__=$2; shift 2;;
-		  -t|--time) TIME=$2; shift 2;;
-          --overwrite) OVRWRT=1; shift 1;;
-          --to-date) TO=$2; shift 2;;
-          *) echo "unknown option: $1" >&2; exit 1;;
-          
-          # *) handle_argument "$1"; shift 1;;  
+        -d|--date) FROM=$(date -d "$2" +%F); TO=$(date -d "$FROM + 1 day" +%F); shift 2;;
+        -l|--loc) LOC=$(nospace "$2"); shift 2;;
+	-o|--out) __DATADIR__=$2; shift 2;;
+	-t|--time) TIME=$2; shift 2;;
+        --overwrite) OVRWRT=1; shift 1;;
+        --to-date) TO=$2; shift 2;;
+        *) echo "unknown option: $1" >&2; exit 1;;          
   esac
 done
 
