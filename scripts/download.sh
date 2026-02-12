@@ -113,13 +113,19 @@ query () {
 }
 
 # Function that downloads product from link.
-download () {
+download_archive () {
 
 source scripts/access_token.sh;
 
-curl -D - -H "Authorization: Bearer $ACCESS_TOKEN"\
- "https://catalogue.dataspace.copernicus.eu/odata/v1/Products($1)/\$value"\
- --location-trusted -o "$2" | head -n 1 | grep -oP "\d{3}";
+local head_response=$(curl -D "-" -H "Authorization: Bearer $ACCESS_TOKEN" "https://download.dataspace.copernicus.eu/odata/v1/Products($1)/\$value" --location-trusted -o "$2")
+local head_response=$(echo -e "$head_response" | tr '\r\n' '\n')
+
+# On client error dump headers to file.
+[ $? -ne 0 ] && echo -e "$head_response" > download_header_dump.txt; 
+
+# Return status code of request.
+# It sits on top of the response.
+echo -e "$head_response" | head -n 1 | grep -oP "\d{3}";
 
 }
 
@@ -272,12 +278,14 @@ CODE=301;
 while :
 do
         [[ $STATUSRBT -ne $CODE ]] &&\
-        STATUSRBT=$(download "$RBT_ID" "$__PATH__/$RBT_FILE.zip");
+        STATUSRBT=$(download_archive "$RBT_ID" "$__PATH__/$RBT_FILE.zip");
 
         [[ $STATUSLST -ne $CODE ]] &&\
-        STATUSLST=$(download "$LST_ID" "$__PATH__/$LST_FILE.zip");
-		
-		# Correct HTTP status code;
+        STATUSLST=$(download_archive "$LST_ID" "$__PATH__/$LST_FILE.zip");
+
+        echo Sentinel-3 status codes: $STATUSRBT // $STATUSLST;
+
+        # Correct HTTP status code;
         if [[ $STATUSRBT -eq $CODE ]] &&\
          [[ $STATUSLST -eq $CODE ]] &&\
          [[ $? -eq 0 ]]
