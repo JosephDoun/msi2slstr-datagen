@@ -169,7 +169,9 @@ LST_ID=$(echo $LSTRESPONSE | grep -oP "$__ID____REGEX__" | head -n 1)
 LST_FILE=$(echo $LSTRESPONSE | grep -oP "$__FNAME_REGEX__" | head -n 1)
 LST_DATE=$(get_date $LST_FILE)
 
+
 # Get query response for S2MSI1C products.
+scripts/log.sh "Querying for L1C products."
 L1CRESPONSE=$(query "S2MSI1C" "$FROM" "$TO" "$RBT_QUERY_FOOTPRINT")
 
 ###########################
