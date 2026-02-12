@@ -213,7 +213,7 @@ fi;
 
 for datetime in $(get_datetimes "$L1CRESPONSE")
 do
-		DIFF=$((`date -ud "$datetime" +%s` - `date -ud $REFERENCETIME +%s`))
+	DIFF=$((`date -ud "$datetime" +%s` - `date -ud $REFERENCETIME +%s`))
         DIFF=$(echo $DIFF | grep -oP "\d*")
         TIMEDIFFS[$i]=$DIFF; ((i++));
 done
