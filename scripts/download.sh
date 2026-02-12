@@ -94,7 +94,7 @@ then
 fi;
 
 # Preset curl options
-alias curl='curl -# --retry 10 --fail-early'
+alias curl='curl -s --retry 10 --fail-early'
 
 # Generate access token
 if [[ -z $ACCESS_TOKEN ]]; then source scripts/access_token.sh; fi;
