@@ -148,10 +148,21 @@ $__TMP__/{S1,S2,S3,S4,S5,S6,S7,S8,S9,F1,F2,LST,solar_zenith,solar_azimuth,sat_ze
 # Inject metadata and build end-product.
 # Clean leftover directories.
 # Include copernicus identifier as metadata in TIF.
-gdal_translate -mo "S3_RBT_PRODUCT=$(basename $RBT)" \
--mo "S3_LST_PRODUCT=$(basename $LST)" \
--a_srs EPSG:4326 \
-$__TMP__/merged.vrt $__DIR__/S3SLSTR.tif &&\
-rm -r $RBT && rm -r $LST &&\
-rm -r $__TMP__;
+gdal_translate \
+        -mask 1 \
+        -a_nodata 0 \
+        -mo "S3_RBT_PRODUCT=$(basename $RBT)" \
+        -mo "S3_LST_PRODUCT=$(basename $LST)" \
+        -a_srs EPSG:4326 \
+        $__TMP__/merged.vrt \
+        $__DIR__/S3SLSTR.tif &&\
+        rm -r $RBT $LST $__TMP__;
 
+
+gdal_calc \
+        -A $__DIR__/S3SLSTR.tif \
+        --allBands A \
+        --calc="A * (A > 0)" \
+        --overwrite \
+        --outfile $__DIR__/S3SLSTR.tif \
+        --NoDataValue 0
