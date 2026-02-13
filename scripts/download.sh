@@ -310,47 +310,51 @@ scripts/log.sh "Checking ${#S2FOOTPRINTS[@]} Sentinel-2 images for $FROM";
 S2OFFLINE=(); count_downloaded=0;
 for i in "${!S2FOOTPRINTS[@]}"
 do
-		# Dates match;
-        if [ $RBT_DATE == $(get_date ${S2FNAMES[$i]}) ] &&\
-         	# Size sufficient;
-			[[ ${S2FILESIZE[$i]%.*} -ge $MINFILESIZE ]] &&\
-          		# Time difference acceptable;
-				[[ ${TIMEDIFFS[$i]} -le $MAXTIME ]] &&\
-		# Directory does not already exist.
-        [ ! -d $__PATH__/${S2FNAMES[$i]} ]
+
+        if {
+            [ $RBT_DATE == $(get_date ${S2FNAMES[$i]}) ] &&\
+            # Size sufficient;
+            [[ ${S2FILESIZE[$i]%.*} -ge $MINFILESIZE ]] &&\
+            # Time difference acceptable;
+            [[ ${TIMEDIFFS[$i]} -le $MAXTIME ]] &&\
+            # Directory does not already exist.
+            [ ! -d $__PATH__/${S2FNAMES[$i]} ]
+        }
         then
-			scripts/log.sh "Downloading image with id: ${S2IDS[$i]}"    
-			STATUS=$(download "${S2IDS[$i]}" "$__PATH__/${S2FNAMES[$i]}.zip")
-                if [[ $STATUS -eq 301 ]] && [[ $? -eq 0 ]]
-                then
-						wait $SENTINEL3_PROCESS;
-						
-						if [ $? -eq 0 ]
-						then
-							echo "$0 -> Finished building the Sentinel-3 image."
-						else
-							exit 33;
-						fi
+            # Dates match;
+            echo "Sentinel-2 L1C Product -> ${S2FNAMES[$i]}; PASS."
 
-						# Start background building process
-						# of Sentinel-2 image.
-                        { 
-                        unzip -o "$__PATH__/${S2FNAMES[$i]}.zip"\
-                         -d "$__PATH__" 1> /dev/null &&\
-                         rm "$__PATH__/${S2FNAMES[$i]}.zip" &&\
-                         scripts/build_sentinel_2.sh -d $__PATH__\
-                          -s ${S2FNAMES[$i]} 1> /dev/null
-                        } &
-						
-                        scripts/log.sh "Downloaded ${S2FNAMES[$i]} with size $((${S2FILESIZE[$i]} / 1024 / 1024)) MB."
-                        
-						((count_downloaded++))
+            # Pre-hook to greenlight Sentinel-3 retrieval.
+            if [ -z $SEN3_DOWNLOADED ]
+            then
+                scripts/log.sh "Starting download of Sentinel-3 products."
+                download_sentinel3_products;
+            fi
 
-				else
-                        scripts/log.sh "WARNING: Uncaught status $STATUS";
-                        scripts/log.sh "Product Failure. Aborting."
-                        rm -r $__PATH__ && exit 33;
-                fi
+            scripts/log.sh "Downloading image with id: ${S2IDS[$i]}"
+            STATUS=$(download_archive "${S2IDS[$i]}" "$__PATH__/${S2FNAMES[$i]}.zip");
+            SUCCESS=$?
+            echo "Download response: $STATUS; Error code: $SUCCESS";
+                
+            if [[ $STATUS -eq 200 ]] && [[ $SUCCESS -eq 0 ]]
+            then
+                { 
+                unzip -o "$__PATH__/${S2FNAMES[$i]}.zip" -d "$__PATH__" 1> /dev/null &&\
+                    rm "$__PATH__/${S2FNAMES[$i]}.zip" &&\
+                    scripts/build_sentinel_2.sh -d $__PATH__ -s ${S2FNAMES[$i]} 1> /dev/null
+                } &
+
+                scripts/log.sh "Downloaded ${S2FNAMES[$i]} with size $((${S2FILESIZE[$i]} / 1024 / 1024)) MB."        
+                ((count_downloaded++))
+            else
+                scripts/log.sh "WARNING: Uncaught status $STATUS";
+                scripts/log.sh "Product Failure. Aborting."
+                rm -r $__PATH__
+                exit 33;
+            fi
+        else
+            # Does not qualify.
+            echo "Sentinel-2 L1C Product -> ${S2FNAMES[$i]}; FAIL."
         fi
 done
 
