@@ -28,6 +28,9 @@ RBT=$(echo $__DIR__/S3*SL_1_RBT*)
 # Variable containing the path to the LST product.
 LST=$(echo $__DIR__/S3*SL_2_LST*)
 
+echo Starting building process for $RBT;
+echo and $LST;
+
 # If product directories do not exist throw error and exit.
 # Current exit code for this case: 11.
 if [ ! -d $RBT ] && [ ! -d $LST ];
@@ -62,7 +65,7 @@ subdataset_name () {
 buildvrt () { 
 # Builds a vrt file describing a Sentinel-3 band.
 # Change: Float64 output type to Float32
-gdal_translate -unscale -of VRT -a_nodata "-32768" -ot Float32 $1 $__TMP__/$2.vrt;
+gdal_translate -r nearest -unscale -of VRT -a_nodata "-32768" -ot Float32 $1 $__TMP__/$2.vrt;
 }
 
 geolocation () {
@@ -91,38 +94,38 @@ EOF
 # First handle geodetic, emission and radiance datasets.
 for __file__ in $__TMP__/{geod*,LST,S*radiance,S*BT,F*BT}_[iaf]n.nc
 do
-        # Log file currently handled.
-        scripts/log.sh "$__file__";
+# Log file currently handled.
+scripts/log.sh "$__file__";
 
-        if [ -f $__file__ ]
+if [ -f $__file__ ]
+then
+        # Detach filename from path.
+        BASE=$(basename $__file__)
+        
+        if [ ${BASE%%_*} == "geodetic" ]
         then
-                # Detach filename from path.
-                BASE=$(basename $__file__)
+            GRID=$(subdataset_name $BASE)
+            buildvrt NETCDF:$__file__:longitude_$GRID lon_$GRID
+            buildvrt NETCDF:$__file__:latitude_$GRID lat_$GRID
+            buildvrt NETCDF:$__file__:elevation_$GRID elev_$GRID
+        else
+            NAME=$(subdataset_name $BASE)
+            GRID=${BASE##*_}
+            GRID=${GRID%.*}
                 
-				if [ ${BASE%%_*} == "geodetic" ]
-                then
-                        GRID=$(subdataset_name $BASE)
-                        buildvrt NETCDF:$__file__:longitude_$GRID lon_$GRID
-                        buildvrt NETCDF:$__file__:latitude_$GRID lat_$GRID
-                        buildvrt NETCDF:$__file__:elevation_$GRID elev_$GRID
-                else
-                        NAME=$(subdataset_name $BASE)
-                        GRID=${BASE##*_}
-                        GRID=${GRID%.*}
-                        
-                        scripts/log.sh "$NAME $GRID"
-                        buildvrt NETCDF:$__file__:$NAME $NAME
-                        
-                        scripts/log.sh "$__TMP__/$NAME.vrt"
+            scripts/log.sh "$NAME $GRID"
+            buildvrt NETCDF:$__file__:$NAME $NAME
+                
+            scripts/log.sh "$__TMP__/$NAME.vrt"
 
-                        # Inject geolocation array info.
-                        sed -i "2 i $(geolocation $GRID)" $__TMP__/$NAME.vrt
-                        
-                        echo
-                        gdalwarp -geoloc $__TMP__/$NAME.vrt $__TMP__/$NAME.tif -overwrite;
-                        echo
-                fi
+            # Inject geolocation array info.
+            sed -i "2 i $(geolocation $GRID)" $__TMP__/$NAME.vrt
+                
+            echo
+            gdalwarp -r nearest -geoloc $__TMP__/$NAME.vrt $__TMP__/$NAME.tif -overwrite;
+            echo
         fi
+fi
 done;
 
 # Move geodetic datasets to tmp directory.
@@ -137,13 +140,16 @@ for zenith in {solar_zenith_tn,solar_azimuth_tn,sat_zenith_tn,sat_azimuth_tn}
 do
         buildvrt "NETCDF:$__TMP__/geometry_tn.nc:$zenith" $zenith
         sed -i "2 i $(geolocation tx)" $__TMP__/$zenith.vrt
-        gdalwarp -geoloc $__TMP__/$zenith.vrt $__TMP__/$zenith.tif -overwrite
+        gdalwarp -r nearest -geoloc $__TMP__/$zenith.vrt $__TMP__/$zenith.tif -overwrite
 done
 
 # Build merger VRT for complete S3 end-product.
-gdalbuildvrt -resolution highest \
--separate $__TMP__/merged.vrt \
-$__TMP__/{S1,S2,S3,S4,S5,S6,S7,S8,S9,F1,F2,LST,solar_zenith,solar_azimuth,sat_zenith,sat_azimuth}*.tif
+gdalbuildvrt \
+        -resolution highest \
+        -srcnodata "-32768" \
+        -separate \
+        $__TMP__/merged.vrt \
+        $__TMP__/{S1,S2,S3,S4,S5,S6,S7,S8,S9,F1,F2,LST,solar_zenith,solar_azimuth,sat_zenith,sat_azimuth}*.tif
 
 # Inject metadata and build end-product.
 # Clean leftover directories.
