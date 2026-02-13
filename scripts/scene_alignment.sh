@@ -17,15 +17,15 @@ fi
 # __DIR__ holds the provided directory path.
 while [ $# -gt 0 ]
 do
-        case $1 in
-                -d|--dir) __DIR__=$2; shift 2;;
-                *) echo Unknown argument "$1": Use -d/--dir to provide a directory.;
-                exit 1;;
-        esac
+    case $1 in
+        -d|--dir) __DIR__=$2; shift 2;;
+        *) echo Unknown argument "$1": Use -d/--dir to provide a directory.;
+        exit 1;;
+    esac
 done
 
-# Reference SEN3 image to be s
-S3FILE=$__DIR__/../S3SLSTR.tif
+# Reference to the original Sentinel-3 scene.
+S3FILE="$__DIR__/../S3SLSTR.tif"
 
 ULLR () { 
 	echo $(gdalinfo $1 | grep -oP \
@@ -37,15 +37,15 @@ ULLR () {
 # Iterate over available tile folders.
 if [ ! -e $__DIR__/S2MSI.tmp.tif ];
 then 
-	scripts/log.sh "Folder appears processed or invalid. Skipping." 1>&2;
-	exit 33; 
+	scripts/log.sh "Folder lacks a processed Sentinel-2 scene. Skipping." 1>&2;
+	exit 1; 
 fi
-        
+
 EPSG=$(gdalinfo $__DIR__/S2MSI.tmp.tif | grep -oP "(?<=\"EPSG\",)\d{5}")
 
 
-scripts/log.sh "EPSG: $EPSG Extents: $(ULLR $__DIR__/S2MSI.tmp.tif | sed "s/\.[0-9]\{3\}//g")"
-scripts/log.sh "Generating projected Sentinel-3 patch matching the Sentinel-2 scene.";
+scripts/log.sh "EPSG: $EPSG Extents: $(ULLR $__DIR__/S2MSI.tmp.tif | sed "s/\.[0-9]\{3\}//g")" 1>&2;
+scripts/log.sh "Generating projected Sentinel-3 patch matching the Sentinel-2 scene." 1>&2;
 
 
 
@@ -56,36 +56,14 @@ gdalwarp -r bilinear -tr 500 500 -s_srs EPSG:4326 \
 
 
 # This performs a cropping action to projwin box.
-gdal_translate -projwin $(ULLR $__DIR__/S2MSI.tmp.tif) \
-        -projwin_srs EPSG:$EPSG $__DIR__/s3.tmp.tif $__DIR__/s3.patch.tmp.tif &&\
-        rm $__DIR__/s3.tmp.tif
-        
-
-
-
-##################################################
-# VALID VALUES CHECK
-# ################################################
-scripts/log.sh "Checking Sentinel-3 patch validity.";
-
-VALID=$(gdalinfo -stats $__DIR__/s3.patch.tmp.tif |\
-grep -oP "(?<=STATISTICS_VALID_PERCENT=)\d+" | head -n 1)
-        
-if [ $VALID -lt 50 ];
-then 
-	echo $0 value validity of image at $VALID %.;
-	scripts/log.sh "Sentinel-3 patch out of sensor geometry. Removing directory." 1>&2;
-    rm -r $__DIR__;
-	exit 93;
-else
-	scripts/log.sh "Image OK."
-	rm $__DIR__/s3.patch.tmp.tif.aux.xml;
-fi
-
+# Shifting should likely not use bilinear interpolation,
+# but instead shift absolute neighbouring values.
+echo $__DIR__ $(ULLR $__DIR__/S2MSI.tmp.tif) 1>&2;
+echo $__DIR__ $(ULLR $__DIR__/s3.patch.tmp.tif) 1>&2;
 
 
 ########################################################
-# CORREGISTRATION
+# COREGISTRATION
 ########################################################
 scripts/log.sh "Starting arosics workflow for $__DIR__.";
 
@@ -96,13 +74,17 @@ arosics local -rsp_alg_calc 0 -rsp_alg_deshift 0 -br 9 -bs 3\
           -o "$__DIR__/s3_coreg.tif" 2> /dev/null &&\
 		  rm $__DIR__/s3.patch.tmp.tif
 
+
 # If output file was not generated continue to next iteration.
 if [[ ! -e "$__DIR__/s3_coreg.tif" ]]
 then
-	scripts/log.sh "Arosics workflow failed. Skipping." 1>&2;
-	exit 90;
+	scripts/log.sh "Arosics coregistration workflow failed. Aborting." 1>&2;
+	exit 1;
 fi
-       
+
+
+# Center cropping with 4 pixels distance.
+# Why do we need that?
 scripts/log.sh "Cropping Sentinel-3 to a 210 x 210 pixels scene.";
 
 gdal_translate -co "COMPRESS=ZSTD" -co "PREDICTOR=2" -co "TILED=YES" \
@@ -115,7 +97,6 @@ read -a S3BOX < <(ULLR $__DIR__/S3SLSTR.tif | sed "s/\.[0-9]\+//g")
         
 # LAST STEP: Crop S2MSI image to rounded S3 extents.
 scripts/log.sh "Cropping Sentinel-2 scene to the exact extents of the generated Sentinel-3 patch.";
-		
 echo "From ${S2BOX[@]}";
 echo "To   ${S3BOX[@]}";
 
