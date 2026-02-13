@@ -38,27 +38,26 @@ read -d '\n' -a ZENITHS < <(cat $s2_dir/GRANULE/*/MTD_TL.xml |\
 read -d '\n' -a AZIMUTHS < <(cat $s2_dir/GRANULE/*/MTD_TL.xml |\
 	grep -oP "(?<=<AZIMUTH_ANGLE unit=\"deg\">)[0-9\.]*(?=</AZIMUTH_ANGLE>)");
 
+
 scripts/log.sh "Tile ID: $ID";
-
 mkdir -p $__DIR__/$TILE;
-
 mv $s2_dir/GRANULE/*/IMG_DATA/*B[0-9][0-9A]*.jp2 $__DIR__/$TILE;
-
-scripts/log.sh "Building VRT file for merged Sentinel-2 scene."
-
-# TODO ZENITH BANDS APPROACH IS COMMENTED OUT FOR NOW. STICKING TO THE METADATA APPROACH.
-
-# epsg=$(EPSG $__DIR__/$TILE/*B01_.vrt)
-# ullr=$(ULLR $__DIR__/$TILE/*B01_.vrt)
-
-# burn_uniform_angle_rasters ${ZENITHS[0]} "EPSG:$epsg" "$ullr" "$__DIR__/$TILE/solar_zenith_.vrt"
-# burn_uniform_angle_rasters ${ZENITHS[9]} "EPSG:$epsg" "$ullr" "$__DIR__/$TILE/sat_zenith_.vrt"
 
 # TODO Can make a python component that get the precise gridded zenith values.
 
-gdalbuildvrt -resolution highest\
- -separate $__DIR__/$TILE/merged.vrt\
-  $__DIR__/$TILE/*{B01,B02,B03,B04,B05,B06,B07,B08,B8A,B09,B10,B11,B12}.jp2 
+# Separate different resolutions in 3 different merged rasters.
+# Upsample to 10m using DSen2-like architecture at later stage.
+scripts/log.sh "Building VRT file for merged Sentinel-2 scene."
+gdalbuildvrt \
+    -resolution highest \
+    -srcnodata 0 \
+    -vrtnodata 0 \
+    -separate \
+    $__DIR__/$TILE/merged.vrt \
+    $__DIR__/$TILE/*{B01,B02,B03,B04,B05,B06,B07,B08,B8A,B09,B10,B11,B12}.jp2 
+# gdalbuildvrt -resolution highest -separate $__DIR__/$TILE/merged.vrt $__DIR__/$TILE/*{B01,B02,B03,B04,B05,B06,B07,B08,B8A,B09,B10,B11,B12}.jp2 
+# gdalbuildvrt -resolution highest -separate $__DIR__/$TILE/merged.vrt $__DIR__/$TILE/*{B01,B02,B03,B04,B05,B06,B07,B08,B8A,B09,B10,B11,B12}.jp2 
+# gdalbuildvrt -resolution highest -separate $__DIR__/$TILE/merged.vrt $__DIR__/$TILE/*{B01,B02,B03,B04,B05,B06,B07,B08,B8A,B09,B10,B11,B12}.jp2 
 
 scripts/log.sh "Building multiband TIF file for Sentinel-2 scene."
 
@@ -96,5 +95,10 @@ gdal_translate -mo "S2_PRODUCT=$ID" \
 
 
 scripts/scene_alignment.sh -d $__DIR__/$TILE;
-
+EXITCODE=$?
+if [ $EXITCODE -ne 0 ]
+then
+    echo Scene alignment for $__DIR__/$TILE failed with code $EXITCODE. Removing.
+    rm -r $__DIR__/$TILE
+fi
 
