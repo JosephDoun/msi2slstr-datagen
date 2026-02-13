@@ -360,24 +360,20 @@ done
 
 if [[ $count_downloaded -eq 0 ]]
 then	 
-		scripts/log.sh "No Sentinel-2 scenes met criteria." 1>&2;
+    scripts/log.sh "No Sentinel-2 scenes met criteria." 1>&2;
 
-		kill $(jobs -p | tr "\n" " ");
-		
-		wait;
+    cat <<-EOF
+        
+        All Sentinel-2 images were acquired more than $(($MAXTIME/60)) 
+        minutes apart or were less than $(($MINFILESIZE/1024/1024))mb in size.
 
-		cat <<-EOF
+        Sentinel-2 acquisition time differences (seconds): ${TIMEDIFFS[@]}
+        Sentinel-2 filesizes (Bytes): ${S2FILESIZE[@]}
+                
+EOF
 		
-		All Sentinel-2 images were acquired more than $(($MAXTIME/60)) 
-		minutes apart or were less than $(($MINFILESIZE/1024/1024))mb in size.
-
-		Sentinel-2 acquisition time differences (seconds): ${TIMEDIFFS[@]}
-		Sentinel-2 filesizes (Bytes): ${S2FILESIZE[@]}
-		
-		EOF
-		
-        rm -r $__PATH__ 2> /dev/null
-        exit 33;
+    rm -r $__PATH__ 2> /dev/null
+    exit 33;   
 fi
 
 
