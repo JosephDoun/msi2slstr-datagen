@@ -381,16 +381,13 @@ scripts/log.sh "Waiting for background scene alignment workflows..."
 wait;
 
 # Sentinel-3 file not necessary.
-if [ -e $S3FILE ]
-then
-	rm $__PATH__/S3SLSTR.tif;
-fi;
+rm "$__PATH__/S3SLSTR.tif"
 
-# If dirsize is 0, remove.
-if [ ! -s $__PATH__ ]; 
+# Get rid of the date folder if no tiles were generated.
+if [[ -d $__PATH__  && -z "$(ls -A $__PATH__)" ]]
 then
-	echo "Removing empty directory" 1>&2;
-	rmdir -p $__PATH__; 
+    echo "No valid images remained for $__PATH__. Removing directory.";
+    rmdir $__PATH__;
 fi
-scripts/log.sh "Finished $FROM."
 
+scripts/log.sh "Finished $FROM.";
