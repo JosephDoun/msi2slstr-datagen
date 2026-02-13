@@ -34,6 +34,10 @@ Example usage:
 The above example will look for appropriate pairs for every day of January 2023 and if found, will proceed with downloading and preparing them.
 
 
+## Future plans
+- Organize data by tile code instead of acquisition date. Include multiple observations per year of the same tile.
+
+
 ## Dependencies
 - curl
 - gdal
